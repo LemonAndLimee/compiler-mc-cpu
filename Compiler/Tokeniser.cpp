@@ -167,7 +167,7 @@ Tokeniser::GetNextToken(
 
     // Create token from the latest matching substring.
     std::string validTokenString = inputString.substr( startIndex, lastValidEndIndex - startIndex );
-    Token::Ptr token = Tokeniser::CreateTokenFromString( lastValidTokenType, validTokenString );
+    Token::Ptr token = CreateTokenFromString( lastValidTokenType, validTokenString );
 
     // Update out parameter to point to start of next substring.
     startIndex = lastValidEndIndex;

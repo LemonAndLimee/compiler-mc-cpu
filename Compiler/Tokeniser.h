@@ -19,15 +19,14 @@ public:
     Tokeniser() = default;
 
     TokensVector ConvertStringToTokens( const std::string& inputString );
-
-    static TokenType GetTokenType( const std::string& tokenString ) noexcept;
-
-    static bool IsWhitespace( const char character );
-
-    static Token::Ptr CreateTokenFromString( const TokenType type, const std::string& tokenString );
-
 protected:
     void ConvertSingleLineAndAppend( const std::string& inputString, TokensVector& tokensVector );
 
     Token::Ptr GetNextToken( const std::string& inputString, size_t& startIndex );
+
+    TokenType GetTokenType( const std::string& tokenString ) noexcept;
+
+    bool IsWhitespace( const char character );
+
+    Token::Ptr CreateTokenFromString( const TokenType type, const std::string& tokenString );
 };
