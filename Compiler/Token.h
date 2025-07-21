@@ -5,7 +5,6 @@
 #pragma once
 
 #include "TokenTypes.h"
-#include "TokenValue.h"
 #include <stdint.h>
 #include <memory>
 

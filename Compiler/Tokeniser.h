@@ -24,6 +24,8 @@ public:
 
     static bool IsWhitespace( const char character );
 
+    static Token::Ptr CreateTokenFromString( const TokenType type, const std::string& tokenString );
+
 protected:
     void ConvertSingleLineAndAppend( const std::string& inputString, TokensVector& tokensVector );
 

@@ -140,9 +140,12 @@ Tokeniser::GetNextToken(
 
     // Create token from the latest matching substring.
     std::string validTokenString = inputString.substr( startIndex, lastValidEndIndex - startIndex );
-    // TODO: add method for this
+    Token::Ptr token = Tokeniser::CreateTokenFromString( lastValidTokenType, validTokenString );
 
+    // Update out parameter to point to start of next substring.
     startIndex = lastValidEndIndex;
+
+    return token;
 }
 
 /**
@@ -174,4 +177,64 @@ Tokeniser::GetTokenType(
 )
 {
     return INVALID_TOKEN; // stub return, TODO: implement
+}
+
+/**
+ * Creates a token given its type and the string representing it.
+ *
+ * \param[in]  type         The calculated token type of the string.
+ * \param[in]  tokenString  The string representing the token to be created.
+ *
+ * \return  The token that the given string represents.
+ */
+Token::Ptr
+Tokeniser::CreateTokenFromString(
+    const TokenType type,
+    const std::string& tokenString
+)
+{
+    TokenValue::Ptr tokenValue;
+    // If g_tokenValueTypes contains type, i.e. it is a value-holding token type
+    if ( 0 < g_tokenValueTypes.count( type ) )
+    {
+        TokenValueType valueType = g_tokenValueTypes.find( type )->second;
+        if ( TokenValueType::NUMERIC == valueType )
+        {
+            // Use 8-bit value since currently we are only supporting the byte data type.
+            uint64_t numericValue = std::stoi( tokenString );
+            if ( numericValue > 0xFF )
+            {
+                printf("Warning: numeric value %d out of range - truncating...", numericValue);
+            }
+            uint8_t numericValueByte = numericValue;
+            tokenValue = std::make_shared< TokenValue >( numericValueByte );
+        }
+        else if ( TokenValueType::STRING == valueType )
+        {
+            tokenValue = std::make_shared< TokenValue >( tokenString );
+        }
+        else if ( TokenValueType::DTYPE == valueType )
+        {
+            if ( 0 < g_dataTypeStrings.count( tokenString ) )
+            {
+                DataType dataType = g_dataTypeStrings.find( tokenString )->second;
+                tokenValue = std::make_shared< TokenValue >( dataType );
+            }
+            else
+            {
+                throw std::runtime_error("Warning: unknown data type - initialising token with no value.");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Warning: unknown token value type - initialising with no value.");
+        }
+    }
+    else
+    {
+        tokenValue = std::make_shared< TokenValue >();
+    }
+
+    Token::Ptr token = std::make_shared<Token>( type, tokenValue );
+    return token;
 }
