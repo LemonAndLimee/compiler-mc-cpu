@@ -4,6 +4,8 @@
 
 #include "Tokeniser.h"
 #include <stdexcept>
+#include <cctype>
+#include <inttypes.h>
 
 /**
  * Converts a string into a vector of tokens.
@@ -114,7 +116,7 @@ Tokeniser::GetNextToken(
     size_t endIndex{ startIndex + 1u }; // End of current substring (exclusive)
 
     // Initialise the "latest saved" variables to invalid values.
-    int lastValidEndIndex{ -1 };
+    size_t lastValidEndIndex{ 0u };
     TokenType lastValidTokenType{ INVALID_TOKEN };
 
     // Loop until we hit the end of the string or a whitespace character
@@ -133,7 +135,7 @@ Tokeniser::GetNextToken(
     }
 
     // If no matching token is found, return nullptr.
-    if ( 0u > lastValidEndIndex )
+    if ( 0u >= lastValidEndIndex )
     {
         return nullptr;
     }
@@ -174,9 +176,48 @@ Tokeniser::IsWhitespace(
 TokenType
 Tokeniser::GetTokenType(
     const std::string& tokenString
-)
+) noexcept
 {
-    return INVALID_TOKEN; // stub return, TODO: implement
+    // If the string has an exact match, return that type
+    if ( 0 < g_tokenTypesExactMatches.count( tokenString ) )
+    {
+        return g_tokenTypesExactMatches.find( tokenString )->second;
+    }
+    // If string represents a data type token
+    if ( 0 < g_dataTypeStrings.count( tokenString ) )
+    {
+        return TokenType::DATA_TYPE;
+    }
+
+    // If first char, proceed assuming it is a numeric literal
+    if ( 0u != std::isdigit( tokenString[0] ) )
+    {
+        for ( size_t index = 1u; index < tokenString.size(); ++index )
+        {
+            if ( 0u == std::isdigit( tokenString[index] ) )
+            {
+                return TokenType::INVALID_TOKEN;
+            }
+        }
+        // If all characters are digits, return byte type - this is currently the only numeric type we support.
+        return TokenType::BYTE;
+    }
+    // If starts with letter or _ then proceed assuming it is an identifier
+    else if ( 0u != std::isalpha( tokenString[0] ) || '_' == tokenString[0] )
+    {
+        for ( size_t index = 1u; index < tokenString.size(); ++index )
+        {
+            // If not alphanumeric or _, then it is invalid
+            if ( 0u == std::isalnum( tokenString[index] ) && '_' != tokenString[0] )
+            {
+                return TokenType::INVALID_TOKEN;
+            }
+        }
+        return TokenType::IDENTIFIER;
+    }
+
+    // If unrecognised, return invalid type
+    return TokenType::INVALID_TOKEN;
 }
 
 /**
@@ -204,9 +245,9 @@ Tokeniser::CreateTokenFromString(
             uint64_t numericValue = std::stoi( tokenString );
             if ( numericValue > 0xFF )
             {
-                printf("Warning: numeric value %d out of range - truncating...", numericValue);
+                printf("Warning: numeric value %" PRId64 " out of range - truncating...", numericValue);
             }
-            uint8_t numericValueByte = numericValue;
+            uint8_t numericValueByte = static_cast< uint8_t >( numericValue );
             tokenValue = std::make_shared< TokenValue >( numericValueByte );
         }
         else if ( TokenValueType::STRING == valueType )

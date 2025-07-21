@@ -3,6 +3,7 @@
  */
 
 #pragma once
+#include <memory>
 
 // Max length that a string value held by the token can be.
 constexpr size_t g_tokenStrValueMaxLen{ 32u };

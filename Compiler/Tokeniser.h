@@ -20,7 +20,7 @@ public:
 
     TokensVector ConvertStringToTokens( const std::string& inputString );
 
-    static TokenType GetTokenType( const std::string& tokenString );
+    static TokenType GetTokenType( const std::string& tokenString ) noexcept;
 
     static bool IsWhitespace( const char character );
 
