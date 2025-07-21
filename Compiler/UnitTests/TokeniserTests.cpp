@@ -9,7 +9,7 @@ public:
     TokeniserTestsFixture() = default;
 
     void
-    CheckTokensVectorAgainstExpected( TokensVector expectedTokens, TokensVector receivedTokens )
+    CheckTokensVectorAgainstExpected( TokensVector& expectedTokens, TokensVector& receivedTokens )
     {
         BOOST_REQUIRE_EQUAL( expectedTokens.size(), receivedTokens.size() );
 
@@ -33,7 +33,8 @@ BOOST_AUTO_TEST_CASE( ConvertEmptyString )
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
     TokensVector outputVector = tokeniser->ConvertStringToTokens( "" );
 
-    CheckTokensVectorAgainstExpected( {}, outputVector );
+    TokensVector emptyVector{};
+    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
 }
 
 BOOST_AUTO_TEST_SUITE( ConvertSingleLineTests )
@@ -48,7 +49,8 @@ BOOST_AUTO_TEST_CASE( ConvertCommentLine )
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    CheckTokensVectorAgainstExpected( {}, outputVector );
+    TokensVector emptyVector{};
+    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
 }
 
 /**
@@ -62,7 +64,8 @@ BOOST_AUTO_TEST_CASE( ConvertWhitespaceLine )
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    CheckTokensVectorAgainstExpected( {}, outputVector );
+    TokensVector emptyVector{};
+    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
 }
 
 /**
@@ -77,7 +80,8 @@ BOOST_AUTO_TEST_CASE( ConvertExactMatchSingleToken )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     Token::Ptr expectedToken = std::make_shared<Token>( FOR, std::make_shared<TokenValue>() );
-    CheckTokensVectorAgainstExpected( { expectedToken }, outputVector );
+    TokensVector expectedVector{ expectedToken };
+    CheckTokensVectorAgainstExpected( expectedVector, outputVector );
 }
 
 /**
@@ -93,7 +97,8 @@ BOOST_AUTO_TEST_CASE( ConvertPatternMatchSingleToken )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     Token::Ptr expectedToken = std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "variableName") );
-    CheckTokensVectorAgainstExpected( { expectedToken }, outputVector );
+    TokensVector expectedVector{ expectedToken };
+    CheckTokensVectorAgainstExpected( expectedVector, outputVector );
 }
 
 /**
@@ -108,9 +113,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleTokensLine )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     TokensVector expectedTokens = {
-        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( "byte" ) ),
+        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
-        std::make_shared<Token>( EQ, std::make_shared<TokenValue>() ),
+        std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( PAREN_OPEN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( BYTE, std::make_shared<TokenValue>( 3u ) ),
         std::make_shared<Token>( PLUS, std::make_shared<TokenValue>() ),
@@ -162,9 +167,9 @@ BOOST_AUTO_TEST_SUITE( ConvertMultipleLinesTests )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     TokensVector expectedLineTokens = {
-        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( "byte" ) ),
+        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
-        std::make_shared<Token>( EQ, std::make_shared<TokenValue>() ),
+        std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( PAREN_OPEN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( BYTE, std::make_shared<TokenValue>( 3u ) ),
         std::make_shared<Token>( PLUS, std::make_shared<TokenValue>() ),
@@ -197,9 +202,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_FirstCommented )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     TokensVector expectedTokens = {
-        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( "byte" ) ),
+        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
-        std::make_shared<Token>( EQ, std::make_shared<TokenValue>() ),
+        std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( PAREN_OPEN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( BYTE, std::make_shared<TokenValue>( 3u ) ),
         std::make_shared<Token>( PLUS, std::make_shared<TokenValue>() ),
@@ -225,9 +230,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_MiddleCommented )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     TokensVector expectedLineTokens = {
-        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( "byte" ) ),
+        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
-        std::make_shared<Token>( EQ, std::make_shared<TokenValue>() ),
+        std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( PAREN_OPEN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( BYTE, std::make_shared<TokenValue>( 3u ) ),
         std::make_shared<Token>( PLUS, std::make_shared<TokenValue>() ),
@@ -259,9 +264,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_OneWhitespace )
     TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
 
     TokensVector expectedLineTokens = {
-        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( "byte" ) ),
+        std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
-        std::make_shared<Token>( EQ, std::make_shared<TokenValue>() ),
+        std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( PAREN_OPEN, std::make_shared<TokenValue>() ),
         std::make_shared<Token>( BYTE, std::make_shared<TokenValue>( 3u ) ),
         std::make_shared<Token>( PLUS, std::make_shared<TokenValue>() ),

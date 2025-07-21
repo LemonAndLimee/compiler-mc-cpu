@@ -28,10 +28,10 @@ Tokeniser::ConvertStringToTokens(
         size_t newLinePos = inputString.find( "\n" );
         while ( std::string::npos != newLinePos )
         {
-            std::string line = inputString.substr( currentIndex, newLinePos );
+            std::string line = inputString.substr( currentIndex, newLinePos-currentIndex );
             ConvertSingleLineAndAppend( line, tokens );
 
-            currentIndex = newLinePos;
+            currentIndex = newLinePos + 1u;
             newLinePos = inputString.find( "\n", currentIndex );
         }
 
@@ -56,7 +56,7 @@ Tokeniser::ConvertSingleLineAndAppend(
 )
 {
     // If string is empty or commented out, i.e. begins with a //
-    if ( inputString.empty() || std::strncmp( inputString.c_str(), "//", 2u ) )
+    if ( inputString.empty() || 0u == inputString.rfind("//", 0u) )
     {
         return;
     }
@@ -99,11 +99,11 @@ Tokeniser::GetNextToken(
      * Given a start pointer, create end pointer = start+1 (skipping any whitespace at the start).
      *
      * Increment end ptr until a valid substring (one that matches a token) is found. When this happens,
-     * mark that a valid substring has been found and record the last valid end ptr. We can't assume exact matches
+     * mark that a valid substring has been found and record the last valid token type. We can't assume exact matches
      * are actually the right token, due to possibilities like + and ++, or | and ||.
      *
-     * Continue until we find whitespace or end of string. Note: if we stop when a token becomes invalid, we would miss
-     * a potential scenario where e.g. name is valid, name_ is invalid, name_a is valid.
+     * Continue until we find whitespace or end of string, or when the token becomes invalid.
+     * Note: this doesn't support rules where x is valid, xy is invalid, xyz is valid.
      * When this happens, create token for last valid substring, then update start ptr to last valid end ptr + 1.
      */
 
@@ -112,28 +112,53 @@ Tokeniser::GetNextToken(
     {
         ++startIndex;
     }
+    // If we have reached the end of the string i.e. there are no more non-whitespace chars
+    if ( inputString.size() == startIndex )
+    {
+        return nullptr;
+    }
 
     size_t endIndex{ startIndex + 1u }; // End of current substring (exclusive)
 
-    // Initialise the "latest saved" variables to invalid values.
-    size_t lastValidEndIndex{ 0u };
-    TokenType lastValidTokenType{ INVALID_TOKEN };
+    TokenType lastValidTokenType = TokenType::INVALID_TOKEN;
 
     // Loop until we hit the end of the string or a whitespace character
-    while ( endIndex < inputString.size() && !IsWhitespace( inputString[endIndex] ) )
+    while ( endIndex <= inputString.size() && !IsWhitespace( inputString[endIndex-1u] ) )
     {
         std::string currentSubstring = inputString.substr( startIndex, endIndex - startIndex );
         // If the current substring matches a token, record it as the latest valid end index.
         TokenType tokenType = GetTokenType( currentSubstring );
-        if ( INVALID_TOKEN != tokenType )
+        if ( INVALID_TOKEN == tokenType )
         {
-            lastValidEndIndex = endIndex;
-            lastValidTokenType = tokenType;
+            // If substring is >1 chars, then it is invalid because it represents the combination of the edges
+            // of 2 tokens. This isn't permitted if both 'borders' are alphanumeric or _, e.g. tokens "for" and "1"
+            // must be separated by whitespace, but "for" and "(" is ok.
+            if ( 1u < currentSubstring.size() )
+            {
+                size_t lastIndex = currentSubstring.size() - 1u;
+                if ( std::isalnum( currentSubstring[lastIndex] ) || '_' == currentSubstring[lastIndex] )
+                {
+                    // If last char i.e. first char of new token is alphanumeric or _, compare to the previous
+                    // to see if this combination is allowed without whitespace.
+                    size_t indexOfLastInValidSubstr = lastIndex - 1u;
+                    if ( std::isalnum( currentSubstring[indexOfLastInValidSubstr] )
+                         || '_' == currentSubstring[indexOfLastInValidSubstr]
+                        )
+                    {
+                        return nullptr;
+                    }
+                }
+            }
+            break;
         }
-
-        ++endIndex;
+        else
+        {
+            lastValidTokenType = tokenType;
+            ++endIndex;
+        }
     }
 
+    size_t lastValidEndIndex = endIndex - 1u;
     // If no matching token is found, return nullptr.
     if ( 0u >= lastValidEndIndex )
     {

@@ -52,7 +52,8 @@ struct TokenValue
         m_value.dataTypeValue = dataTypeValue;
     };
 
-    bool operator==( const TokenValue& comparisonValue ) const
+    bool
+    operator==( const TokenValue& comparisonValue ) const
     {
         if ( m_valueType != comparisonValue.m_valueType )
         {
@@ -65,6 +66,8 @@ struct TokenValue
             return comparisonValue.m_value.numericValue == m_value.numericValue;
         case STRING:
             return strcmp( comparisonValue.m_value.stringValue, m_value.stringValue ) == 0;
+        case DTYPE:
+            return comparisonValue.m_value.dataTypeValue == m_value.dataTypeValue;
         default:
             // If type is unused or unknown, ignore value
             return true;
