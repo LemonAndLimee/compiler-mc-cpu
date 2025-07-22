@@ -1,3 +1,7 @@
+/**
+ * Contains collections of data related to token types.
+ */
+
 #pragma once
 
 #include <unordered_map>
@@ -34,6 +38,8 @@ enum TokenType
     NOT,
     OR,
     AND,
+    BITWISE_OR,
+    BITWISE_AND,
     LSHIFT,
     RSHIFT,
     PAREN_OPEN,
@@ -68,6 +74,8 @@ const std::unordered_map<std::string, TokenType> g_tokenTypesExactMatches {
     { "!", NOT },
     { "|", OR },
     { "&", AND },
+    { "||", BITWISE_OR },
+    { "&&", BITWISE_AND },
     { "<<", LSHIFT },
     { ">>", RSHIFT },
     { "(", PAREN_OPEN },
