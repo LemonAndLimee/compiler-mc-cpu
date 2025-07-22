@@ -141,6 +141,7 @@
     <ClCompile Include="Tokeniser.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AstNode.h" />
     <ClInclude Include="GrammarRules.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Tokeniser.h" />

@@ -41,5 +41,8 @@
     <ClInclude Include="GrammarRules.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AstNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
