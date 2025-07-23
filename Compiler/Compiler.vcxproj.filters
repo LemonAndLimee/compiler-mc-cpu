@@ -24,6 +24,9 @@
     <ClCompile Include="Tokeniser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AstGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Token.h">
@@ -38,10 +41,13 @@
     <ClInclude Include="TokenValue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="GrammarRules.h">
+    <ClInclude Include="Grammar.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AstNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AstGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

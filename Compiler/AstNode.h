@@ -3,7 +3,7 @@
  */
 
 #pragma once
-#include "GrammarRules.h"
+#include "Grammar.h"
 #include "Token.h"
 #include <vector>
 #include <memory>
