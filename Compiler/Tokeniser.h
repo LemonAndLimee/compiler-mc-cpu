@@ -15,7 +15,8 @@ using TokensVector = std::vector<Token::Ptr>;
 class Tokeniser
 {
 public:
-    using Ptr = std::shared_ptr<Tokeniser>;
+    using Ptr = std::shared_ptr< Tokeniser >;
+    using UPtr = std::unique_ptr< Tokeniser >;
     Tokeniser() = default;
 
     TokensVector ConvertStringToTokens( const std::string& inputString );

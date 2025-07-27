@@ -13,6 +13,7 @@ class AstGenerator
 {
 public:
     using Ptr = std::shared_ptr< AstGenerator >;
+    using UPtr = std::unique_ptr< AstGenerator >;
     AstGenerator() = default;
 
     AstNode::Ptr GenerateAst( const TokensVector& tokens, GrammarSymbols::NT startingNt, bool allowLeftoverTokens );
