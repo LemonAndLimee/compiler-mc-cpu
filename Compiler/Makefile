@@ -16,7 +16,9 @@ OBJS_DIR = $(TARGET_DIR)/Objs
 OBJS = $(patsubst %,$(OBJS_DIR)/%,$(OBJS_NAMES))
 
 # Default rule to build the executable
-all: clean directory $(TARGET)
+all: directory $(TARGET)
+
+rebuild: clean all
 
 # Rule to make objects directory
 directory:
