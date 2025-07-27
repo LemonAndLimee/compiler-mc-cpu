@@ -48,7 +48,6 @@ Logger::LogMessage(
     int lineNum 
 )
 {
-    
     if ( logLevel <= m_logLevel )
     {
         std::string logMessage;
@@ -87,4 +86,17 @@ Logger::LogLevelToString(
         default:
             throw std::runtime_error( "Unknown log level" + std::to_string( logLevel ) );
     }
+}
+
+/**
+ * \brief  Sets log level of this logger.
+ *
+ * \param[in]  level  Log level in numeric form.
+ */
+void
+Logger::SetLogLevel(
+    LogLevel level
+)
+{
+    m_logLevel = level;
 }

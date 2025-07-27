@@ -8,6 +8,7 @@
 #include <string>
 
 #include "TokenValue.h"
+#include "Logger.h"
 
 namespace TokenTypes
 {
@@ -96,5 +97,7 @@ const std::unordered_map<TokenType, TokenValueType> g_tokenValueTypes {
 const std::unordered_map<std::string, DataType> g_dataTypeStrings {
     { "byte", DataType::DT_BYTE },
 };
+
+std::string ConvertTokenTypeToString ( TokenType type );
 
 }

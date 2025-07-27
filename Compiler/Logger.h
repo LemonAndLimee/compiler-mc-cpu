@@ -2,11 +2,9 @@
  * Declaration of class responsible for writing logs.
  */
 
-#include <string>
+#pragma once
 
-#ifndef LOG_LEVEL
-    #define LOG_LEVEL LogLevel::INFO
-#endif
+#include <string>
 
 enum LogLevel
 {
@@ -24,7 +22,8 @@ public:
 
     Logger( LogLevel logLevel );
     static Ptr GetInstance() {
-        static Ptr instance = std::make_shared< Logger >( LOG_LEVEL );
+        // Default to log level INFO
+        static Ptr instance = std::make_shared< Logger >( LogLevel::INFO );
         return instance;
     }
     ~Logger() = default;
@@ -35,6 +34,8 @@ public:
     #define LOG_WARN( message ) LOG( LogLevel::WARN, message )
     #define LOG_INFO( message ) LOG( LogLevel::INFO, message )
     #define LOG_INFO_LOW_LEVEL( message ) LOG( LogLevel::INFO_LOW_LEVEL, message )
+
+    void SetLogLevel( LogLevel level );
 
 private:
     std::string LogLevelToString( LogLevel logLevel );

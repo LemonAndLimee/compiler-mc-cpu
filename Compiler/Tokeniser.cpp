@@ -60,6 +60,7 @@ Tokeniser::ConvertSingleLineAndAppend(
     // If string is empty or commented out, i.e. begins with a //
     if ( inputString.empty() || 0u == inputString.rfind("//", 0u) )
     {
+        LOG_INFO_LOW_LEVEL( "Skipping line as it is empty or commented out." );
         return;
     }
 
@@ -67,6 +68,7 @@ Tokeniser::ConvertSingleLineAndAppend(
     Token::Ptr nextToken;
     while ( nullptr != ( nextToken = GetNextToken( inputString, currentIndex ) ) )
     {
+        LOG_INFO_LOW_LEVEL( "Found token " + nextToken->ToString() );
         tokensVector.push_back( nextToken );
     }
 
@@ -206,6 +208,7 @@ Tokeniser::GetTokenType(
     const std::string& tokenString
 ) noexcept
 {
+    LOG_INFO_LOW_LEVEL( "Trying to get token type for " + tokenString );
     // If the string has an exact match, return that type
     if ( 0 < g_tokenTypesExactMatches.count( tokenString ) )
     {

@@ -24,19 +24,21 @@ AstGenerator::GenerateAst(
     bool allowLeftoverTokens
 )
 {
+    std::string startingNtString = GrammarSymbols::ConvertSymbolToString( startingNt );
     if ( 0u == g_nonTerminalRuleSets.count( startingNt ) )
     {
-        // TODO: make human readable form of symbol values
-        std::string errMsg = "Starting NT symbol " + std::to_string( startingNt ) + " has no associated rules.";
+        std::string errMsg = "Starting NT symbol " + startingNtString + " has no associated rules.";
         LOG_ERROR( errMsg );
         throw std::runtime_error( errMsg );
     }
 
+    LOG_INFO( "Generating AST for starting NT " + startingNtString + "." );
     // Try each rule belonging to the starting NT symbol
     Rules rules =  g_nonTerminalRuleSets.find( startingNt )->second;
     for ( Rule currentRule : rules )
     {
-        // TODO: log the rule we are trying
+        std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
+        LOG_INFO( "Trying rule '" + ruleString + "'" );
 
         // Children of the node we are building
         std::vector< AstNode::Child > children;
@@ -49,6 +51,7 @@ AstGenerator::GenerateAst(
         // If rule doesn't match tokens list, ignore and continue
         if ( !TryRule( tokensCopy, currentRule, children, currentTokenIndex ) )
         {
+            LOG_INFO_LOW_LEVEL( "Rule doesn't match, continuing..." );
             continue;
         }
 
@@ -60,15 +63,14 @@ AstGenerator::GenerateAst(
         {
             if ( !tokensCopy.empty() )
             {
-                // TODO: add warning
+                LOG_INFO_LOW_LEVEL( "Leftover tokens at the end: rejecting rule '" + ruleString + "'." );
                 continue;
             }
         }
         
         if ( children.empty() )
         {
-            // TODO: make human-readable form of rule
-            std::string errMsg = "Rule match found but no child nodes or tokens created.";
+            std::string errMsg = "Rule match found for '" + ruleString + "' but no child nodes or tokens created.";
             LOG_ERROR( errMsg );
             throw std::runtime_error( errMsg );
         }
@@ -78,9 +80,8 @@ AstGenerator::GenerateAst(
     }
 
     // If the loop is exited and no rule match has been found
-    // TODO: make string form of symbol names and rules for better error messages
-    std::string errMsg = "No matching rule could be found.";
-    LOG_ERROR( errMsg );
+    std::string errMsg = "No matching rule could be found for start symbol " + startingNtString;
+    LOG_ERROR( errMsg + " and tokens '" + Token::ConvertTokensVectorToString( tokens ) + "'");
     throw std::runtime_error( errMsg );
 }
 

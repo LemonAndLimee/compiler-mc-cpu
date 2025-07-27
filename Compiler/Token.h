@@ -21,6 +21,10 @@ public:
     Token( TokenType type );
     Token( TokenType type, TokenValue::Ptr value );
 
+    std::string ToString();
+
+    static std::string ConvertTokensVectorToString( const std::vector< Token::Ptr >& tokensVector );
+
     TokenType m_type;
 
     // Contains token value - e.g. if type is identifier, this would contain the variable name.

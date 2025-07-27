@@ -41,8 +41,6 @@ namespace GrammarSymbols
     };
 
     using Symbol = std::variant< T, NT >;
-    using Rule = std::set< Symbol >;
-    using Rules = std::set< Rule >;
 
     // Token types that represent an operator, i.e. the relationship-definer of a given rule.
     const std::unordered_set< TokenTypes::TokenType > g_operatorTokenTypes {
@@ -67,11 +65,39 @@ namespace GrammarSymbols
         LSHIFT,
         RSHIFT
     };
+
+    const std::unordered_map< NT, std::string > g_nonTerminalStringForms {
+        { Block , "Block" },
+        { Section , "Section" },
+        { For_loop , "For_loop" },
+        { For_init , "For_init" },
+        { If_else , "If_else" },
+        { Else , "Else" },
+        { While_loop , "While_loop" },
+        { Statement , "Statement" },
+        { Comparison , "Comparison" },
+        { Logical , "Logical" },
+        { Variable , "Variable" },
+        { Bitwise , "Bitwise" },
+        { Shift , "Shift" },
+        { Negation , "Negation" },
+        { Expression , "Expression" },
+        { Term , "Term" },
+        { Exp_factor , "Exp_factor" },
+        { Factor , "Factor" }
+    };
+
+    std::string ConvertSymbolToString( Symbol symbol );
 }
 
 namespace GrammarRules
 {
     using namespace GrammarSymbols;
+
+    using Rule = std::set< Symbol >;
+    using Rules = std::set< Rule >;
+
+    std::string ConvertRuleToString( const Rule& rule );
 
     // Mapping between non-terminal symbols and the rules they can expand to.
     const std::unordered_map< NT, Rules > g_nonTerminalRuleSets {
