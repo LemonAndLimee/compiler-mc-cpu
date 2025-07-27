@@ -3,6 +3,7 @@
  */
 
 #include "Tokeniser.h"
+#include "Logger.h"
 #include <stdexcept>
 #include <cctype>
 #include <inttypes.h>
@@ -47,7 +48,7 @@ Tokeniser::ConvertStringToTokens(
  * Converts a single line string into a vector of tokens.
  *
  * \param[in]      inputString   The string to be converted, representing a single line of code.
- * \param[in/out]  tokensVector  Vector of tokens to append to.
+ * \param[in,out]  tokensVector  Vector of tokens to append to.
  */
 void
 Tokeniser::ConvertSingleLineAndAppend(
@@ -55,6 +56,7 @@ Tokeniser::ConvertSingleLineAndAppend(
     TokensVector& tokensVector
 )
 {
+    LOG_INFO( "Converting line '" + inputString + "' to tokens." );
     // If string is empty or commented out, i.e. begins with a //
     if ( inputString.empty() || 0u == inputString.rfind("//", 0u) )
     {
@@ -73,6 +75,7 @@ Tokeniser::ConvertSingleLineAndAppend(
     {
         if ( !IsWhitespace( inputString[index] ) )
         {
+            LOG_ERROR( "Non-matching characters left at end of line '" + inputString + "'." );
             throw std::invalid_argument( "Non-whitespace characters leftover at the end of line." );
         }
     }
@@ -242,6 +245,7 @@ Tokeniser::GetTokenType(
     }
 
     // If unrecognised, return invalid type
+    LOG_INFO_LOW_LEVEL( "Unrecognised token type for string " + tokenString );
     return TokenType::INVALID_TOKEN;
 }
 
@@ -270,7 +274,7 @@ Tokeniser::CreateTokenFromString(
             uint64_t numericValue = std::stoi( tokenString );
             if ( numericValue > 0xFF )
             {
-                printf("Warning: numeric value %" PRId64 " out of range - truncating...", numericValue);
+                LOG_WARN( "Numeric value " + std::to_string(numericValue) + " too large: information may be lost in truncation." );
             }
             uint8_t numericValueByte = static_cast< uint8_t >( numericValue );
             tokenValue = std::make_shared< TokenValue >( numericValueByte );
@@ -288,12 +292,14 @@ Tokeniser::CreateTokenFromString(
             }
             else
             {
-                throw std::runtime_error("Warning: unknown data type - initialising token with no value.");
+                LOG_ERROR( "Unknown data type " + tokenString );
+                throw std::runtime_error( "Unknown data type " + tokenString );
             }
         }
         else
         {
-            throw std::runtime_error("Warning: unknown token value type - initialising with no value.");
+            LOG_ERROR( "Unknown token value type " + tokenString );
+            throw std::runtime_error( "Unknown token value type " + tokenString );
         }
     }
     else

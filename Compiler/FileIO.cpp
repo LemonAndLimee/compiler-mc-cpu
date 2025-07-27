@@ -3,6 +3,7 @@
  */
 
 #include "FileIO.h"
+#include "Logger.h"
 #include <fstream>
 
 /**
@@ -10,7 +11,7 @@
  *
  * \param[in]  filePath  Path to file.
  *
- * \return
+ * \return  String containing the contents of the file.
  */
 std::string
 FileIO::ReadFileToString(
@@ -20,7 +21,9 @@ FileIO::ReadFileToString(
     std::ifstream file( filePath );
     if ( !file.is_open() )
     {
-        throw std::invalid_argument( "Failed to open file " + filePath );
+        std::string errMsg = "Failed to open file " + filePath;
+        LOG_ERROR( errMsg );
+        throw std::invalid_argument( errMsg );
     }
 
     std::string fileString;
@@ -32,4 +35,22 @@ FileIO::ReadFileToString(
     }
 
     return fileString;
+}
+
+/**
+ * \brief  Appends line to the end of given file.
+ *
+ * \param[in]  line      String to append to file.
+ * \param[in]  filePath  Path to file.
+ */
+void
+FileIO::AppendLineToFile(
+    const std::string& line,
+    const std::string& filePath
+)
+{
+    std::ofstream file;
+    file.open( filePath, std::ios::app );
+
+    file << line + "\n";
 }

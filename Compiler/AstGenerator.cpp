@@ -3,6 +3,7 @@
  */
 
 #include "AstGenerator.h"
+#include "Logger.h"
 #include <stdexcept>
 
 /**
@@ -25,13 +26,18 @@ AstGenerator::GenerateAst(
 {
     if ( 0u == g_nonTerminalRuleSets.count( startingNt ) )
     {
-        throw std::invalid_argument( "Starting NT symbol has no associated rules." );
+        // TODO: make human readable form of symbol values
+        std::string errMsg = "Starting NT symbol " + std::to_string( startingNt ) + " has no associated rules.";
+        LOG_ERROR( errMsg );
+        throw std::runtime_error( errMsg );
     }
 
     // Try each rule belonging to the starting NT symbol
     Rules rules =  g_nonTerminalRuleSets.find( startingNt )->second;
     for ( Rule currentRule : rules )
     {
+        // TODO: log the rule we are trying
+
         // Children of the node we are building
         std::vector< AstNode::Child > children;
         // Index of the current token we are consuming from the input vector
@@ -61,7 +67,10 @@ AstGenerator::GenerateAst(
         
         if ( children.empty() )
         {
-            throw std::runtime_error( "Rule match found but no child nodes or tokens created." );
+            // TODO: make human-readable form of rule
+            std::string errMsg = "Rule match found but no child nodes or tokens created.";
+            LOG_ERROR( errMsg );
+            throw std::runtime_error( errMsg );
         }
 
         // Construct an AST node from children
@@ -70,7 +79,9 @@ AstGenerator::GenerateAst(
 
     // If the loop is exited and no rule match has been found
     // TODO: make string form of symbol names and rules for better error messages
-    throw std::runtime_error( "No matching rule could be found." );
+    std::string errMsg = "No matching rule could be found.";
+    LOG_ERROR( errMsg );
+    throw std::runtime_error( errMsg );
 }
 
 /**
@@ -104,6 +115,8 @@ AstGenerator::TryRule(
         // Then add this to children
         // TODO: do we need the get AST node method to update our token index i.e. taking it as out param?
     }
+    LOG_WARN( "Method not implemented, returning false." );
+    return false;
 }
 
 /**
@@ -119,5 +132,6 @@ AstGenerator::CreateNodeFromChildren(
     const std::vector< AstNode::Child >& children
 )
 {
+    LOG_WARN( "Method not implemented, throwing exception..." );
     throw std::runtime_error( "Not implemented" );
 }

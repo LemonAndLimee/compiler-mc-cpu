@@ -2,6 +2,7 @@
 #include "Tokeniser.h"
 #include "FileIO.h"
 #include "AstGenerator.h"
+#include "Logger.h"
 
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
@@ -24,7 +25,7 @@ RunCompiler(
     AstNode::Ptr abstractSyntaxTree = astGenerator->GenerateAst( tokens, startingNtSymbol, false );
 
     // TODO: Generate assembly code here...
-    throw std::runtime_error( "Not implemented." );
+    LOG_WARN( "No further stages of compilation have been added yet: exiting program." );
 }
 
 int
@@ -43,6 +44,7 @@ main(
         std::string currentArg = argv[index];
         if ( "--help" == currentArg || "-h" == currentArg )
         {
+            // TODO: make log level an argument
             helpCalled = true;
             std::string helpMsg = "Command line arguments:\n";
             helpMsg += "-h (--help)\tPrints this message.\n";
