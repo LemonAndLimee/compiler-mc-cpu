@@ -42,8 +42,11 @@ namespace GrammarSymbols
 
     using Symbol = std::variant< T, NT >;
 
-    // Token types that represent an operator, i.e. the relationship-definer of a given rule.
-    const std::unordered_set< TokenTypes::TokenType > g_operatorTokenTypes {
+    // Token types that represent the relationship-definer of a given rule, and can be assigned to an AST node label.
+    // This does not include types such as identifier, data type, etc. as these are tokens which hold one value and
+    // therefore do not require their own AST node.
+    // Important: a rule may only contain max. 1 node label type symbols.
+    const std::unordered_set< TokenTypes::TokenType > g_nodeLabelTokenTypes {
         ASSIGN,
         PLUS,
         MINUS,
@@ -66,6 +69,16 @@ namespace GrammarSymbols
         RSHIFT
     };
 
+    // Token types that can be skipped for the AST, e.g. punctuation
+    const std::unordered_set< TokenTypes::TokenType > g_skipForAstTokenTypes {
+        PAREN_OPEN,
+        PAREN_CLOSE,
+        BRACE_OPEN,
+        BRACE_CLOSE,
+        SEMICOLON
+    };
+
+    // Human-readable string forms of non-terminal symbols
     const std::unordered_map< NT, std::string > g_nonTerminalStringForms {
         { Block , "Block" },
         { Section , "Section" },

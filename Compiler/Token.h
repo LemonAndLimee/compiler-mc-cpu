@@ -11,8 +11,6 @@
 
 using namespace TokenTypes;
 
-using Tokens = std::deque< Token::Ptr >;
-
 /**
  * Token class.
  */
@@ -26,7 +24,7 @@ public:
 
     std::string ToString();
 
-    static std::string ConvertTokensToString( const Tokens& tokensVector );
+    static std::string ConvertTokensToString( const std::deque< Token::Ptr >& tokens );
 
     TokenType m_type;
 
@@ -40,3 +38,5 @@ public:
         return comparisonToken.m_type == m_type && *comparisonToken.m_value.get() == *m_value.get();
     }
 };
+
+using Tokens = std::deque< Token::Ptr >;

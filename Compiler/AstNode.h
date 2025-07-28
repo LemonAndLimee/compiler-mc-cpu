@@ -14,9 +14,9 @@ public:
     using Ptr = std::shared_ptr< AstNode >;
     using Child = std::variant< AstNode::Ptr, Token::Ptr >;
 
-    AstNode( GrammarSymbols::Symbol nodeLabel, std::vector< Child > children )
+    AstNode( GrammarSymbols::Symbol nodeLabel, const std::vector< Child >& children )
     : m_nodeLabel( nodeLabel ),
-      m_children( std::move( children ) )
+      m_children( children )
     {
     }
 

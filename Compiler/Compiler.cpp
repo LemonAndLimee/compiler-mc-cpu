@@ -37,7 +37,8 @@ RunCompiler(
     {
         AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >();
         constexpr GrammarSymbols::NT startingNtSymbol { Block };
-        abstractSyntaxTree = astGenerator->GenerateAst( tokens, startingNtSymbol, false );
+        size_t tokenIndex{ 0u };
+        abstractSyntaxTree = astGenerator->GenerateAst( tokens, tokenIndex, startingNtSymbol, false );
     }
     catch ( std::exception& e )
     {

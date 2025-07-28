@@ -8,18 +8,21 @@
 
 /**
  * \brief Generates an Abstract Syntax tree from a given set of tokens. If the syntax of the tokens
- *        is invalid, it throws an error.
+ *        is invalid, it returns nullptr.
  *
- * \param[in]  tokens               String of tokens representing the code to be converted.
- * \param[in]  startingNt           Non-terminal symbol identifying the rule to start the tree generation from.
- * \param[in]  allowLeftoverTokens  If set to false, will throw error if there are leftover tokens after resolving the
- *                                  rule. Can be used for root node of AST, as well as ending NTs in a rule.
+ * \param[in]      tokens               String of tokens representing the code to be converted.
+ * \param[in,out]  tokenIndex           The index of the next token to try consume.
+ * \param[in]      startingNt           Non-terminal symbol identifying the rule to start the tree generation from.
+ * \param[in]      allowLeftoverTokens  If set to false, will return nullptr if there are leftover tokens after
+ *                                      resolving the rule. Can be used for root node of AST, as well as ending NTs in
+ *                                      a rule.
  *
- * \return  Pointer to the root of the generated tree.
+ * \return  Pointer to the root of the generated tree. Nullptr if tokens are invalid.
  */
 AstNode::Ptr
 AstGenerator::GenerateAst(
     const Tokens& tokens,
+    size_t& tokenIndex,
     GrammarSymbols::NT startingNt,
     bool allowLeftoverTokens
 )
@@ -37,16 +40,16 @@ AstGenerator::GenerateAst(
     Rules rules =  g_nonTerminalRuleSets.find( startingNt )->second;
     for ( Rule currentRule : rules )
     {
-        std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
-        LOG_INFO( "Trying rule '" + ruleString + "'" );
-
         // Children of the node we are building
         std::vector< AstNode::Child > children;
-        // Index of the current token we are consuming from the input collection
-        size_t currentTokenIndex{ 0u };
+        // Index of the current token we are consuming from the input collection.
+        // Make copy so we can revert to the original value if the rule is rejected.
+        size_t currentRuleTokenIndex{ tokenIndex };
 
+        std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
+        LOG_INFO( "Trying rule '" + ruleString + "', token index: " + std::to_string( currentRuleTokenIndex ) );
         // If rule doesn't match tokens list, ignore and continue
-        if ( !TryRule( tokens, currentRule, children, currentTokenIndex ) )
+        if ( !TryRule( tokens, currentRule, children, currentRuleTokenIndex ) )
         {
             LOG_INFO_LOW_LEVEL( "Rule doesn't match, continuing..." );
             continue;
@@ -58,7 +61,7 @@ AstGenerator::GenerateAst(
         // looping through further rules.
         if ( !allowLeftoverTokens )
         {
-            if ( tokens.count() <= currentTokenIndex )
+            if ( tokens.size() <= currentRuleTokenIndex )
             {
                 LOG_INFO_LOW_LEVEL( "Leftover tokens at the end: rejecting rule '" + ruleString + "'." );
                 continue;
@@ -73,13 +76,13 @@ AstGenerator::GenerateAst(
         }
 
         // Construct an AST node from children
-        return CreateNodeFromChildren( children );
+        return CreateNodeFromChildren( children, startingNt );
     }
 
     // If the loop is exited and no rule match has been found
     std::string errMsg = "No matching rule could be found for start symbol " + startingNtString;
-    LOG_ERROR( errMsg + " and tokens '" + Token::ConvertTokensToString( tokens ) + "'");
-    throw std::runtime_error( errMsg );
+    LOG_INFO_LOW_LEVEL( errMsg + " and tokens '" + Token::ConvertTokensToString( tokens ) + "'");
+    return nullptr;
 }
 
 /**
@@ -89,7 +92,7 @@ AstGenerator::GenerateAst(
  * \param[in]      rule        The current rule that is being tested. Consists of symbols, either terminal or
  *                             non-terminal.
  * \param[out]     children    Child nodes or tokens belonging to the rule being tested.
- * \param[out]     tokenIndex  The index of the next token after this rule has been resolved. Used by a calling
+ * \param[in,out]  tokenIndex  The index of the next token to consume. Used by a calling
  *                             method to test a later rule, or determine if there are leftover tokens.  
  *
  * \return  True if the rule could successfully be matched to the tokens, false otherwise.
@@ -104,31 +107,113 @@ AstGenerator::TryRule(
 {
     for ( Symbol symbol : rule )
     {
+        LOG_INFO_LOW_LEVEL( "Trying symbol " + GrammarSymbols::ConvertSymbolToString( symbol ) );
+
         // If symbol is terminal
         // If rule symbol matches the token currently being pointed at, increment token ptr and continue
         // If symbol not to be skipped (e.g. {}, (), ;), add the token to children
+        if ( const T* pTerminal = std::get_if< T >( &symbol ) )
+        {
+            TokenType terminalSymbol = *pTerminal;
+            if ( terminalSymbol != tokens[tokenIndex]->m_type )
+            {
+                LOG_INFO_LOW_LEVEL( "Symbol doesn't match current token " + tokens[tokenIndex]->ToString() + ", rejecting rule." );
+                return false;
+            }
+
+            // If token type not to be skipped, add to children and continue through the rest of the rule.
+            if ( GrammarSymbols::g_skipForAstTokenTypes.end() == GrammarSymbols::g_skipForAstTokenTypes.find( terminalSymbol ) )
+            {
+                children.push_back( tokens[tokenIndex] );
+                tokenIndex++;
+                continue;
+            }
+        }
 
         // Else if symbol non terminal, call get AST node on that rule name
         // Then add this to children
-        // TODO: do we need the get AST node method to update our token index i.e. taking it as out param?
+        else if ( const NT* pNonTerminal = std::get_if< NT >( &symbol ) )
+        {
+            GrammarSymbols::NT nonTerminalSymbol = *pNonTerminal;
+            // Generate sub-tree from the non-terminal symbol, allowing leftover tokens.
+            AstNode::Ptr astNode = GenerateAst( tokens, tokenIndex, nonTerminalSymbol, true );
+            if ( nullptr == astNode )
+            {
+                LOG_INFO_LOW_LEVEL( "GenerateAst() returned nullptr. Rejecting current rule..." );
+                return false;
+            }
+            children.push_back( astNode );
+            continue;
+        }
+
+        // If symbol type not recognised
+        else
+        {
+            LOG_ERROR( "Symbol doesn't belong to T or NT sets." );
+            throw std::runtime_error( "Symbol doesn't belong to T or NT sets." );
+        }
     }
-    LOG_WARN( "Method not implemented, returning false." );
-    return false;
+
+    // If no symbols have been rejected, the rule matches.
+    return true;
 }
 
 /**
- * \brief  Creates an AST node instance from a given set of child nodes/tokens. Skips tokens that can be skipped,
- *         e.g. punctuation, and assigns the node label according to the set of children.
+ * \brief  Creates an AST node instance from a given set of child nodes/tokens. Assigns the node label according to
+ *         the set of children. Children should be validated already so throws if anything is invalid.
  *
  * \param[in]  children  Child nodes or tokens belonging to the node being created.
+ * \param[in]  nodeNt    The NT symbol to which this node's rule belongs. If an operator cannot be decided, this is
+ *                       used as the node label.
  *
  * \return  Ptr to the created AST node.
  */
 AstNode::Ptr
 AstGenerator::CreateNodeFromChildren(
-    const std::vector< AstNode::Child >& children
+    const std::vector< AstNode::Child >& children,
+    GrammarSymbols::NT nodeNt
 )
 {
-    LOG_WARN( "Method not implemented, throwing exception..." );
-    throw std::runtime_error( "Not implemented" );
+    // Set to valid value if a terminal symbol label is found - if still invalid after all children have been
+    // checked, the node NT will be used.
+    GrammarSymbols::T terminalNodeLabel = TokenTypes::INVALID_TOKEN;
+    size_t terminalNodeLabelIndex;
+
+    // Search through children for node label if exists - throws if more than 1 is found.
+    for ( size_t i = 0; i < children.size(); ++i )
+    {
+        AstNode::Child child = children[i];
+        // If child is a token
+        if ( const Token::Ptr* pToken = std::get_if< Token::Ptr >( &child ) )
+        {
+            TokenType tokenType = ( *pToken )->m_type;
+            // If token is node label type, mark it as such.
+            if ( g_nodeLabelTokenTypes.end() != g_nodeLabelTokenTypes.find( tokenType ) )
+            {
+                if ( TokenTypes::INVALID_TOKEN != terminalNodeLabel )
+                {
+                    std::string errMsg = "Creating node for " + GrammarSymbols::ConvertSymbolToString( nodeNt );
+                    errMsg += ": gathered children have more than one node label type: ";
+                    errMsg += TokenTypes::ConvertTokenTypeToString( terminalNodeLabel ) + ", ";
+                    errMsg += TokenTypes::ConvertTokenTypeToString( tokenType );
+                    LOG_ERROR( errMsg );
+                    throw std::runtime_error( "Creating node: children have >1 node label type." );
+                }
+                terminalNodeLabel = tokenType;
+                terminalNodeLabelIndex = i;
+            }
+        }
+    }
+
+    // If a terminal node label was found, use it and remove it from children
+    if ( TokenTypes::INVALID_TOKEN != terminalNodeLabel )
+    {
+        std::vector< AstNode::Child > childrenCopy = children;
+        childrenCopy.erase( childrenCopy.begin() + terminalNodeLabelIndex );
+        return std::make_shared< AstNode >( terminalNodeLabel, childrenCopy );
+    }
+    else
+    {
+        return std::make_shared< AstNode >( nodeNt, children );
+    }
 }
