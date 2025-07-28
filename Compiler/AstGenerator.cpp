@@ -19,7 +19,7 @@
  */
 AstNode::Ptr
 AstGenerator::GenerateAst(
-    const TokensVector& tokens,
+    const Tokens& tokens,
     GrammarSymbols::NT startingNt,
     bool allowLeftoverTokens
 )
@@ -42,14 +42,11 @@ AstGenerator::GenerateAst(
 
         // Children of the node we are building
         std::vector< AstNode::Child > children;
-        // Index of the current token we are consuming from the input vector
+        // Index of the current token we are consuming from the input collection
         size_t currentTokenIndex{ 0u };
 
-        // Make an editable copy of the input tokens vector
-        TokensVector tokensCopy = tokens;
-
         // If rule doesn't match tokens list, ignore and continue
-        if ( !TryRule( tokensCopy, currentRule, children, currentTokenIndex ) )
+        if ( !TryRule( tokens, currentRule, children, currentTokenIndex ) )
         {
             LOG_INFO_LOW_LEVEL( "Rule doesn't match, continuing..." );
             continue;
@@ -61,7 +58,7 @@ AstGenerator::GenerateAst(
         // looping through further rules.
         if ( !allowLeftoverTokens )
         {
-            if ( !tokensCopy.empty() )
+            if ( tokens.count() <= currentTokenIndex )
             {
                 LOG_INFO_LOW_LEVEL( "Leftover tokens at the end: rejecting rule '" + ruleString + "'." );
                 continue;
@@ -81,15 +78,14 @@ AstGenerator::GenerateAst(
 
     // If the loop is exited and no rule match has been found
     std::string errMsg = "No matching rule could be found for start symbol " + startingNtString;
-    LOG_ERROR( errMsg + " and tokens '" + Token::ConvertTokensVectorToString( tokens ) + "'");
+    LOG_ERROR( errMsg + " and tokens '" + Token::ConvertTokensToString( tokens ) + "'");
     throw std::runtime_error( errMsg );
 }
 
 /**
  * \brief  Tries to resolve a given rule (collection of symbols) from the given list of tokens.
  *
- * \param[in,out]  tokens      String of tokens representing the code to be converted. If a token matches a symbol
- *                             in the rule, it is popped from the start of the vector.
+ * \param[in]      tokens      String of tokens representing the code to be converted.
  * \param[in]      rule        The current rule that is being tested. Consists of symbols, either terminal or
  *                             non-terminal.
  * \param[out]     children    Child nodes or tokens belonging to the rule being tested.
@@ -100,7 +96,7 @@ AstGenerator::GenerateAst(
  */
 bool
 AstGenerator::TryRule(
-    TokensVector& tokens,
+    const Tokens& tokens,
     const Rule& rule,
     std::vector< AstNode::Child >& children,
     size_t& tokenIndex

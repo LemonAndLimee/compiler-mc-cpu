@@ -5,8 +5,6 @@
 #include "Token.h"
 #include "Logger.h"
 
-#include <vector>
-
 using namespace TokenTypes;
 
 Token::Token( TokenType type )
@@ -63,26 +61,26 @@ Token::ToString()
 }
 
 /**
- * Converts vector of tokens into human-readable string form.
+ * Converts collection of tokens into human-readable string form.
  *
- * `param[in]  tokensVector  Vector of tokens.
+ * `param[in]  tokens  Collection of tokens.
  *
  * \return String form of tokens.
  */
 std::string
-Token::ConvertTokensVectorToString(
-    const std::vector< Token::Ptr >& tokensVector
+Token::ConvertTokensToString(
+    const Tokens& tokens
 )
 {
-    std::string tokensVectorString;
-    for ( size_t i = 0; i < tokensVector.size(); ++i )
+    std::string tokensString;
+    for ( size_t i = 0; i < tokens.size(); ++i )
     {
-        tokensVectorString += tokensVector[i]->ToString() + ", ";
+        tokensString += tokens[i]->ToString() + ", ";
     }
 
     // Pop off the leftover comma and space
-    tokensVectorString.pop_back();
-    tokensVectorString.pop_back();
+    tokensString.pop_back();
+    tokensString.pop_back();
 
-    return tokensVectorString;
+    return tokensString;
 }

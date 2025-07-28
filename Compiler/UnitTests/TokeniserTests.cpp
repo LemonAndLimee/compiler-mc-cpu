@@ -1,15 +1,13 @@
 #include <boost/test/unit_test.hpp>
 #include "Tokeniser.h"
 
-using TokensVector = std::vector<Token::Ptr>;
-
 class TokeniserTestsFixture
 {
 public:
     TokeniserTestsFixture() = default;
 
     void
-    CheckTokensVectorAgainstExpected( TokensVector& expectedTokens, TokensVector& receivedTokens )
+    CheckTokensAgainstExpected( Tokens& expectedTokens, Tokens& receivedTokens )
     {
         BOOST_REQUIRE_EQUAL( expectedTokens.size(), receivedTokens.size() );
 
@@ -26,67 +24,67 @@ public:
 BOOST_FIXTURE_TEST_SUITE( TokeniserTests, TokeniserTestsFixture )
 
 /**
- * Tests that when ConvertStringToTokens() is called with an empty string, it returns an empty vector of tokens.
+ * Tests that when ConvertStringToTokens() is called with an empty string, it returns an empty collection of tokens.
  */
 BOOST_AUTO_TEST_CASE( ConvertEmptyString )
 {
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( "" );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( "" );
 
-    TokensVector emptyVector{};
-    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
+    Tokens emptyTokens{};
+    CheckTokensAgainstExpected( emptyTokens, outputTokens );
 }
 
 BOOST_AUTO_TEST_SUITE( ConvertSingleLineTests )
 
 /**
- * Tests that when ConvertStringToTokens() is called on a comment line, it returns an empty vector of tokens.
+ * Tests that when ConvertStringToTokens() is called on a comment line, it returns an empty collection of tokens.
  */
 BOOST_AUTO_TEST_CASE( ConvertCommentLine )
 {
     std::string stringToConvert = "// I am a commented out line";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector emptyVector{};
-    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
+    Tokens emptyTokens{};
+    CheckTokensAgainstExpected( emptyTokens, outputTokens );
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called on a line made up of only whitespace, it returns an empty vector
- * of tokens.
+ * Tests that when ConvertStringToTokens() is called on a line made up of only whitespace, it returns an empty
+ * collection of tokens.
  */
 BOOST_AUTO_TEST_CASE( ConvertWhitespaceLine )
 {
     std::string stringToConvert = "     \t  ";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector emptyVector{};
-    CheckTokensVectorAgainstExpected( emptyVector, outputVector );
+    Tokens emptyTokens{};
+    CheckTokensAgainstExpected( emptyTokens, outputTokens );
 }
 
 /**
  * Tests that when ConvertStringToTokens() is called on a line made up of a single, exact-match token, it returns a
- * vector containing the expected token.
+ * container containing the expected token.
  */
 BOOST_AUTO_TEST_CASE( ConvertExactMatchSingleToken )
 {
     std::string stringToConvert = "for";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
     Token::Ptr expectedToken = std::make_shared<Token>( FOR, std::make_shared<TokenValue>() );
-    TokensVector expectedVector{ expectedToken };
-    CheckTokensVectorAgainstExpected( expectedVector, outputVector );
+    Tokens expectedTokens{ expectedToken };
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
  * Tests that when ConvertStringToTokens() is called on a line made up of a single, pattern-match token, it returns a
- * vector containing the expected token.
+ * container containing the expected token.
  */
 BOOST_AUTO_TEST_CASE( ConvertPatternMatchSingleToken )
 {
@@ -94,15 +92,15 @@ BOOST_AUTO_TEST_CASE( ConvertPatternMatchSingleToken )
     TokenType expectedTokenType{ IDENTIFIER };
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
     Token::Ptr expectedToken = std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "variableName") );
-    TokensVector expectedVector{ expectedToken };
-    CheckTokensVectorAgainstExpected( expectedVector, outputVector );
+    Tokens expectedTokens{ expectedToken };
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called on a line made up of multiple tokens, it returns a vector
+ * Tests that when ConvertStringToTokens() is called on a line made up of multiple tokens, it returns a container
  * containing the expected tokens.
  */
 BOOST_AUTO_TEST_CASE( ConvertMultipleTokensLine )
@@ -110,9 +108,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleTokensLine )
     std::string stringToConvert = "byte myNumber = (3+4)*2;";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector expectedTokens = {
+    Tokens expectedTokens = {
         std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
         std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
@@ -126,7 +124,7 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleTokensLine )
         std::make_shared<Token>( SEMICOLON, std::make_shared<TokenValue>() )
     };
 
-    CheckTokensVectorAgainstExpected( expectedTokens, outputVector );
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
@@ -156,7 +154,7 @@ BOOST_AUTO_TEST_SUITE_END() // ConvertSingleLineTests
 BOOST_AUTO_TEST_SUITE( ConvertMultipleLinesTests )
 
 /**
- * Tests that when ConvertStringToTokens() is called multiple matching lines, it returns a vector containing
+ * Tests that when ConvertStringToTokens() is called multiple matching lines, it returns a container containing
  * the expected tokens.
  */
     BOOST_AUTO_TEST_CASE( ConvertMultipleMatchingLines )
@@ -164,9 +162,9 @@ BOOST_AUTO_TEST_SUITE( ConvertMultipleLinesTests )
     std::string stringToConvert = "byte myNumber = (3+4)*2;\nbyte myNumber = (3+4)*2;\nbyte myNumber = (3+4)*2;";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector expectedLineTokens = {
+    Tokens expectedLineTokens = {
         std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
         std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
@@ -180,28 +178,28 @@ BOOST_AUTO_TEST_SUITE( ConvertMultipleLinesTests )
         std::make_shared<Token>( SEMICOLON, std::make_shared<TokenValue>() )
     };
 
-    TokensVector expectedTokens;
+    Tokens expectedTokens;
     expectedTokens.reserve( expectedLineTokens.size() * 3u );
 
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
 
-    CheckTokensVectorAgainstExpected( expectedTokens, outputVector );
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called multiple lines, with the first commented, the tokens vector
- * returned reflects the second line.
+ * Tests that when ConvertStringToTokens() is called multiple lines, with the first commented, the tokens
+ * returned reflect the second line.
  */
 BOOST_AUTO_TEST_CASE( ConvertMultipleLines_FirstCommented )
 {
     std::string stringToConvert = "//commented line\nbyte myNumber = (3+4)*2;";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector expectedTokens = {
+    Tokens expectedTokens = {
         std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
         std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
@@ -215,21 +213,21 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_FirstCommented )
         std::make_shared<Token>( SEMICOLON, std::make_shared<TokenValue>() )
     };
 
-    CheckTokensVectorAgainstExpected( expectedTokens, outputVector );
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called multiple lines, with the middle commented, the tokens vector
- * returned reflects the surrounding lines.
+ * Tests that when ConvertStringToTokens() is called multiple lines, with the middle commented, the tokens
+ * returned reflect the surrounding lines.
  */
 BOOST_AUTO_TEST_CASE( ConvertMultipleLines_MiddleCommented )
 {
     std::string stringToConvert = "byte myNumber = (3+4)*2;\n//commented line\nbyte myNumber = (3+4)*2;";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector expectedLineTokens = {
+    Tokens expectedLineTokens = {
         std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
         std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
@@ -243,27 +241,27 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_MiddleCommented )
         std::make_shared<Token>( SEMICOLON, std::make_shared<TokenValue>() )
     };
 
-    TokensVector expectedTokens;
+    Tokens expectedTokens;
     expectedTokens.reserve( expectedLineTokens.size() * 2u );
 
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
 
-    CheckTokensVectorAgainstExpected( expectedTokens, outputVector );
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called multiple lines, with a whitespace line, the tokens vector
- * returned reflects the surrounding lines.
+ * Tests that when ConvertStringToTokens() is called multiple lines, with a whitespace line, the tokens
+ * returned reflect the surrounding lines.
  */
 BOOST_AUTO_TEST_CASE( ConvertMultipleLines_OneWhitespace )
 {
     std::string stringToConvert = "byte myNumber = (3+4)*2;\n  \t  \nbyte myNumber = (3+4)*2;";
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
-    TokensVector outputVector = tokeniser->ConvertStringToTokens( stringToConvert );
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    TokensVector expectedLineTokens = {
+    Tokens expectedLineTokens = {
         std::make_shared<Token>( DATA_TYPE, std::make_shared<TokenValue>( DataType::DT_BYTE ) ),
         std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "myNumber" ) ),
         std::make_shared<Token>( ASSIGN, std::make_shared<TokenValue>() ),
@@ -277,13 +275,13 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_OneWhitespace )
         std::make_shared<Token>( SEMICOLON, std::make_shared<TokenValue>() )
     };
 
-    TokensVector expectedTokens;
+    Tokens expectedTokens;
     expectedTokens.reserve( expectedLineTokens.size() * 2u );
 
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
     expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
 
-    CheckTokensVectorAgainstExpected( expectedTokens, outputVector );
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
 
 /**

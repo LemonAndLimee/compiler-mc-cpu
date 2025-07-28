@@ -19,7 +19,7 @@ RunCompiler(
     const std::string& outputFile
 )
 {
-    TokensVector tokens;
+    Tokens tokens;
     try
     {
         std::string inputFileString = FileIO::ReadFileToString( inputFile );

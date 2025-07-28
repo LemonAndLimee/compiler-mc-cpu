@@ -7,8 +7,11 @@
 #include "TokenTypes.h"
 #include <stdint.h>
 #include <memory>
+#include <deque>
 
 using namespace TokenTypes;
+
+using Tokens = std::deque< Token::Ptr >;
 
 /**
  * Token class.
@@ -23,7 +26,7 @@ public:
 
     std::string ToString();
 
-    static std::string ConvertTokensVectorToString( const std::vector< Token::Ptr >& tokensVector );
+    static std::string ConvertTokensToString( const Tokens& tokensVector );
 
     TokenType m_type;
 

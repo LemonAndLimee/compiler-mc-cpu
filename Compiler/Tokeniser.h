@@ -6,10 +6,7 @@
 
 #include "Token.h"
 #include <string>
-#include <vector>
 #include <memory>
-
-using TokensVector = std::vector<Token::Ptr>;
 
 // Class responsible for converting a string into a stream of tokens.
 class Tokeniser
@@ -19,9 +16,9 @@ public:
     using UPtr = std::unique_ptr< Tokeniser >;
     Tokeniser() = default;
 
-    TokensVector ConvertStringToTokens( const std::string& inputString );
+    Tokens ConvertStringToTokens( const std::string& inputString );
 protected:
-    void ConvertSingleLineAndAppend( const std::string& inputString, TokensVector& tokensVector );
+    void ConvertSingleLineAndAppend( const std::string& inputString, Tokens& tokens );
 
     Token::Ptr GetNextToken( const std::string& inputString, size_t& startIndex );
 

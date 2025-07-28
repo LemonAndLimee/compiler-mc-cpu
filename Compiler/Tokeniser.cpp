@@ -9,18 +9,18 @@
 #include <inttypes.h>
 
 /**
- * Converts a string into a vector of tokens.
+ * Converts a string into tokens.
  *
  * \param[in]  inputString  The string to be converted. Can be a single line or a whole program.
  *
- * \return  A vector of tokens representing the given string.
+ * \return  A deque of tokens representing the given string.
  */
-TokensVector
+Tokens
 Tokeniser::ConvertStringToTokens(
     const std::string& inputString
 )
 {
-    TokensVector tokens{};
+    Tokens tokens{};
 
     if ( !inputString.empty() )
     {
@@ -45,15 +45,15 @@ Tokeniser::ConvertStringToTokens(
 }
 
 /**
- * Converts a single line string into a vector of tokens.
+ * Converts a single line string into tokens.
  *
  * \param[in]      inputString   The string to be converted, representing a single line of code.
- * \param[in,out]  tokensVector  Vector of tokens to append to.
+ * \param[in,out]  tokens        Deque of tokens to append to.
  */
 void
 Tokeniser::ConvertSingleLineAndAppend(
     const std::string& inputString,
-    TokensVector& tokensVector
+    Tokens& tokens
 )
 {
     LOG_INFO( "Converting line '" + inputString + "' to tokens." );
@@ -69,7 +69,7 @@ Tokeniser::ConvertSingleLineAndAppend(
     while ( nullptr != ( nextToken = GetNextToken( inputString, currentIndex ) ) )
     {
         LOG_INFO_LOW_LEVEL( "Found token " + nextToken->ToString() );
-        tokensVector.push_back( nextToken );
+        tokens.push_back( nextToken );
     }
 
     // Check there are no non-whitespace characters left at the end of the line.
@@ -87,7 +87,7 @@ Tokeniser::ConvertSingleLineAndAppend(
  * Gets the next token in a string, and updates current index.
  *
  * \param[in]      inputString   The string from which to get the token.
- * \param[in/out]  startIndex    The index of the beginning of the substring representing the next token.
+ * \param[in,out]  startIndex    The index of the beginning of the substring representing the next token.
  *
  * \return  The next token starting at index (the largest possible that matches a rule), or nullptr if there is
  *          no matching token to be found.
