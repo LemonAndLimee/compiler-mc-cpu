@@ -9,46 +9,13 @@
 
 #include "TokenValue.h"
 #include "Logger.h"
+#include "Grammar.h"
 
 namespace TokenTypes
 {
 
-enum TokenType
-{
-    INVALID_TOKEN, // A non-existent token
-    DATA_TYPE,
-    ASSIGN,
-    BYTE,
-    IF,
-    ELSE,
-    WHILE,
-    FOR,
-    IDENTIFIER,
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    DIVIDE,
-    MOD,
-    EXPONENT,
-    EQ,  // ==
-    NEQ, // !=
-    LEQ, // <=
-    GEQ, // >=
-    LT,  // <
-    GT,  // >
-    NOT,
-    OR,
-    AND,
-    BITWISE_OR,
-    BITWISE_AND,
-    LSHIFT,
-    RSHIFT,
-    PAREN_OPEN,
-    PAREN_CLOSE,
-    BRACE_OPEN,
-    BRACE_CLOSE,
-    SEMICOLON
-};
+using namespace GrammarSymbols;
+using TokenType = T;
 
 // Contains the exact string matches (if they exist) of token types.
 const std::unordered_map<std::string, TokenType> g_tokenTypesExactMatches {

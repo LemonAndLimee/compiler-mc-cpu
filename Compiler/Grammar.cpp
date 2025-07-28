@@ -3,6 +3,38 @@
  */
 
 #include "Grammar.h"
+#include "Logger.h"
+#include "TokenTypes.h"
+#include <string>
+
+/**
+ * Determines whether symbol is terminal or non-terminal.
+ *
+ * \param[in]  symbol  The symbol being checked.
+ *
+ * \return Type of the symbol.
+ */
+GrammarSymbols::SymbolType
+GrammarSymbols::GetSymbolType(
+    GrammarSymbols::Symbol symbol
+)
+{
+    unsigned maskedSymbolType = symbol & SymbolType::BITMASK;
+    if ( SymbolType::Terminal == maskedSymbolType )
+    {
+        return SymbolType::Terminal;
+    }
+    else if ( SymbolType::NonTerminal == maskedSymbolType )
+    {
+        return SymbolType::NonTerminal;
+    }
+    else
+    {
+        std::string errMsg = "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( maskedSymbolType );
+        LOG_ERROR( errMsg );
+        throw std::runtime_error( errMsg );
+    }
+}
 
 /**
  * Converts symbol into human-readable string form.
@@ -14,24 +46,21 @@ GrammarSymbols::ConvertSymbolToString(
     Symbol symbol
 )
 {
-    if ( const T* pTerminal = std::get_if< T >( &symbol ) )
+    SymbolType symbolType = GetSymbolType( symbol );
+    if ( SymbolType::NonTerminal == symbolType )
     {
-        return TokenTypes::ConvertTokenTypeToString( *pTerminal );
+        return g_nonTerminalStringForms.find( static_cast< NT >( symbol ) )->second;
     }
-    else if ( const NT* pNonTerminal = std::get_if< NT >( &symbol ) )
+    else if ( SymbolType::Terminal == symbolType )
     {
-        if ( 0 < g_nonTerminalStringForms.count( *pNonTerminal ) )
-        {
-            return g_nonTerminalStringForms.find( *pNonTerminal )->second;
-        }
-        std::string errMsg = "Could not find string form for NT symbol " + std::to_string( *pNonTerminal );
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        return TokenTypes::ConvertTokenTypeToString( static_cast< T >( symbol ) );
     }
     else
     {
-        LOG_ERROR( "Symbol doesn't belong to T or NT sets." );
-        throw std::runtime_error( "Symbol doesn't belong to T or NT sets." );
+        std::string errMsg = "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( symbolType );
+        errMsg += " returned by GetSymbolType()";
+        LOG_ERROR( errMsg );
+        throw std::runtime_error( errMsg );
     }
 }
 
@@ -46,12 +75,18 @@ GrammarRules::ConvertRuleToString(
 )
 {
     std::string ruleString;
-    for ( Rule::iterator iter = rule.begin(); iter != rule.end(); ++iter )
+    //for ( Rule::iterator iter = rule.begin(); iter != rule.end(); ++iter )
+    //{
+    //    ruleString += GrammarSymbols::ConvertSymbolToString( *iter ) + " ";
+    //}
+
+    //ruleString.pop_back();
+
+    for ( size_t i = 0; i < rule.size(); ++i )
     {
-        ruleString += GrammarSymbols::ConvertSymbolToString( *iter ) + " ";
-    }
-
+        ruleString += GrammarSymbols::ConvertSymbolToString( rule[i] ) + " ";
+    } 
     ruleString.pop_back();
-
+    
     return ruleString;
 }

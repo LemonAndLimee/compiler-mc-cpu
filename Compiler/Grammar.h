@@ -5,22 +5,60 @@
 
 #pragma once
 
-#include "TokenTypes.h"
 #include <set>
 #include <unordered_set>
-#include <variant>
-
-using namespace TokenTypes;
+#include <unordered_map>
+#include <string>
+#include <vector>
 
 namespace GrammarSymbols
 {
-
+    enum SymbolType {
+        Terminal    = 0x0100,
+        NonTerminal = 0x0200,
+        BITMASK     = 0xFF00
+    };
     // Terminal Symbol
-    using T = TokenTypes::TokenType;
+    enum T
+    {
+        INVALID_TOKEN = SymbolType::Terminal, // A non-existent token
+        DATA_TYPE,
+        ASSIGN,
+        BYTE,
+        IF,
+        ELSE,
+        WHILE,
+        FOR,
+        IDENTIFIER,
+        PLUS,
+        MINUS,
+        MULTIPLY,
+        DIVIDE,
+        MOD,
+        EXPONENT,
+        EQ,  // ==
+        NEQ, // !=
+        LEQ, // <=
+        GEQ, // >=
+        LT,  // <
+        GT,  // >
+        NOT,
+        OR,
+        AND,
+        BITWISE_OR,
+        BITWISE_AND,
+        LSHIFT,
+        RSHIFT,
+        PAREN_OPEN,
+        PAREN_CLOSE,
+        BRACE_OPEN,
+        BRACE_CLOSE,
+        SEMICOLON,
+    };
     // Non-terminal Symbol. Use lowercase to help make T vs NT more human-readable.
     enum NT
     {
-        Block,
+        Block = SymbolType::NonTerminal,
         Section,
         For_loop,
         For_init,
@@ -40,13 +78,13 @@ namespace GrammarSymbols
         Factor,
     };
 
-    using Symbol = std::variant< T, NT >;
+    using Symbol = unsigned;
 
     // Token types that represent the relationship-definer of a given rule, and can be assigned to an AST node label.
     // This does not include types such as identifier, data type, etc. as these are tokens which hold one value and
     // therefore do not require their own AST node.
     // Important: a rule may only contain max. 1 node label type symbols.
-    const std::unordered_set< TokenTypes::TokenType > g_nodeLabelTokenTypes {
+    const std::unordered_set< T > g_nodeLabelTerminals {
         ASSIGN,
         PLUS,
         MINUS,
@@ -70,7 +108,7 @@ namespace GrammarSymbols
     };
 
     // Token types that can be skipped for the AST, e.g. punctuation
-    const std::unordered_set< TokenTypes::TokenType > g_skipForAstTokenTypes {
+    const std::unordered_set< T > g_skipForAstTerminals {
         PAREN_OPEN,
         PAREN_CLOSE,
         BRACE_OPEN,
@@ -100,6 +138,7 @@ namespace GrammarSymbols
         { Factor , "Factor" }
     };
 
+    SymbolType GetSymbolType( Symbol symbol );
     std::string ConvertSymbolToString( Symbol symbol );
 }
 
@@ -107,7 +146,7 @@ namespace GrammarRules
 {
     using namespace GrammarSymbols;
 
-    using Rule = std::set< Symbol >;
+    using Rule = std::vector< Symbol >;
     using Rules = std::set< Rule >;
 
     std::string ConvertRuleToString( const Rule& rule );

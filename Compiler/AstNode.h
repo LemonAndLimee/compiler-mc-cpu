@@ -7,6 +7,7 @@
 #include "Token.h"
 #include <vector>
 #include <memory>
+#include <variant>
 
 class AstNode
 {

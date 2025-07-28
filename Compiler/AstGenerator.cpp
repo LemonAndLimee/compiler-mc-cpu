@@ -30,12 +30,12 @@ AstGenerator::GenerateAst(
     std::string startingNtString = GrammarSymbols::ConvertSymbolToString( startingNt );
     if ( 0u == g_nonTerminalRuleSets.count( startingNt ) )
     {
-        std::string errMsg = "Starting NT symbol " + startingNtString + " has no associated rules.";
+        std::string errMsg = "Starting symbol " + startingNtString + " has no associated rules.";
         LOG_ERROR( errMsg );
         throw std::runtime_error( errMsg );
     }
 
-    LOG_INFO( "Generating AST for starting NT " + startingNtString + "." );
+    LOG_INFO( "Generating AST for starting symbol " + startingNtString + "." );
     // Try each rule belonging to the starting NT symbol
     Rules rules =  g_nonTerminalRuleSets.find( startingNt )->second;
     for ( Rule currentRule : rules )
@@ -47,11 +47,12 @@ AstGenerator::GenerateAst(
         size_t currentRuleTokenIndex{ tokenIndex };
 
         std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
-        LOG_INFO( "Trying rule '" + ruleString + "', token index: " + std::to_string( currentRuleTokenIndex ) );
+        LOG_INFO( "Inside " + startingNtString + ": Trying rule '" + ruleString + "', token index: "
+                  + std::to_string( currentRuleTokenIndex ) );
         // If rule doesn't match tokens list, ignore and continue
         if ( !TryRule( tokens, currentRule, children, currentRuleTokenIndex ) )
         {
-            LOG_INFO_LOW_LEVEL( "Rule doesn't match, continuing..." );
+            LOG_INFO( "No match for rule '" + ruleString + "', continuing..." );
             continue;
         }
 
@@ -63,7 +64,7 @@ AstGenerator::GenerateAst(
         {
             if ( tokens.size() <= currentRuleTokenIndex )
             {
-                LOG_INFO_LOW_LEVEL( "Leftover tokens at the end: rejecting rule '" + ruleString + "'." );
+                LOG_INFO( "Leftover tokens at the end: rejecting rule '" + ruleString + "'." );
                 continue;
             }
         }
@@ -75,6 +76,7 @@ AstGenerator::GenerateAst(
             throw std::runtime_error( errMsg );
         }
 
+        LOG_INFO( "Found match for '" + ruleString + "', creating AST node..." );
         // Construct an AST node from children
         return CreateNodeFromChildren( children, startingNt );
     }
@@ -107,14 +109,18 @@ AstGenerator::TryRule(
 {
     for ( Symbol symbol : rule )
     {
-        LOG_INFO_LOW_LEVEL( "Trying symbol " + GrammarSymbols::ConvertSymbolToString( symbol ) );
+        std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
+        LOG_INFO_LOW_LEVEL( "Trying symbol '" + symbolString + "', token index=" + std::to_string( tokenIndex ) );
+
+        SymbolType symbolType = GrammarSymbols::GetSymbolType( symbol );
 
         // If symbol is terminal
         // If rule symbol matches the token currently being pointed at, increment token ptr and continue
         // If symbol not to be skipped (e.g. {}, (), ;), add the token to children
-        if ( const T* pTerminal = std::get_if< T >( &symbol ) )
+        if ( SymbolType::Terminal == symbolType )
         {
-            TokenType terminalSymbol = *pTerminal;
+            LOG_INFO_LOW_LEVEL( "Symbol is terminal: '" + symbolString + "'" );
+            TokenType terminalSymbol = static_cast< TokenType >( symbol );
             if ( terminalSymbol != tokens[tokenIndex]->m_type )
             {
                 LOG_INFO_LOW_LEVEL( "Symbol doesn't match current token " + tokens[tokenIndex]->ToString() + ", rejecting rule." );
@@ -122,19 +128,21 @@ AstGenerator::TryRule(
             }
 
             // If token type not to be skipped, add to children and continue through the rest of the rule.
-            if ( GrammarSymbols::g_skipForAstTokenTypes.end() == GrammarSymbols::g_skipForAstTokenTypes.find( terminalSymbol ) )
+            if ( GrammarSymbols::g_skipForAstTerminals.end() == GrammarSymbols::g_skipForAstTerminals.find( terminalSymbol ) )
             {
                 children.push_back( tokens[tokenIndex] );
                 tokenIndex++;
+                LOG_INFO_LOW_LEVEL( "Added '" + symbolString + "' to children, token index=" + std::to_string( tokenIndex ) );
                 continue;
             }
         }
 
         // Else if symbol non terminal, call get AST node on that rule name
         // Then add this to children
-        else if ( const NT* pNonTerminal = std::get_if< NT >( &symbol ) )
+        else if ( SymbolType::NonTerminal == symbolType )
         {
-            GrammarSymbols::NT nonTerminalSymbol = *pNonTerminal;
+            LOG_INFO_LOW_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
+            GrammarSymbols::NT nonTerminalSymbol = static_cast< NT >( symbol );
             // Generate sub-tree from the non-terminal symbol, allowing leftover tokens.
             AstNode::Ptr astNode = GenerateAst( tokens, tokenIndex, nonTerminalSymbol, true );
             if ( nullptr == astNode )
@@ -142,6 +150,7 @@ AstGenerator::TryRule(
                 LOG_INFO_LOW_LEVEL( "GenerateAst() returned nullptr. Rejecting current rule..." );
                 return false;
             }
+            LOG_INFO_LOW_LEVEL( "Generated AST node for '" + symbolString + "', adding to children..." );
             children.push_back( astNode );
             continue;
         }
@@ -176,7 +185,7 @@ AstGenerator::CreateNodeFromChildren(
 {
     // Set to valid value if a terminal symbol label is found - if still invalid after all children have been
     // checked, the node NT will be used.
-    GrammarSymbols::T terminalNodeLabel = TokenTypes::INVALID_TOKEN;
+    GrammarSymbols::T terminalNodeLabel = T::INVALID_TOKEN;
     size_t terminalNodeLabelIndex;
 
     // Search through children for node label if exists - throws if more than 1 is found.
@@ -188,9 +197,9 @@ AstGenerator::CreateNodeFromChildren(
         {
             TokenType tokenType = ( *pToken )->m_type;
             // If token is node label type, mark it as such.
-            if ( g_nodeLabelTokenTypes.end() != g_nodeLabelTokenTypes.find( tokenType ) )
+            if ( g_nodeLabelTerminals.end() != g_nodeLabelTerminals.find( tokenType ) )
             {
-                if ( TokenTypes::INVALID_TOKEN != terminalNodeLabel )
+                if ( T::INVALID_TOKEN != terminalNodeLabel )
                 {
                     std::string errMsg = "Creating node for " + GrammarSymbols::ConvertSymbolToString( nodeNt );
                     errMsg += ": gathered children have more than one node label type: ";
@@ -206,7 +215,7 @@ AstGenerator::CreateNodeFromChildren(
     }
 
     // If a terminal node label was found, use it and remove it from children
-    if ( TokenTypes::INVALID_TOKEN != terminalNodeLabel )
+    if ( T::INVALID_TOKEN != terminalNodeLabel )
     {
         std::vector< AstNode::Child > childrenCopy = children;
         childrenCopy.erase( childrenCopy.begin() + terminalNodeLabelIndex );
@@ -214,6 +223,7 @@ AstGenerator::CreateNodeFromChildren(
     }
     else
     {
+        // Else use NT label and original set of children
         return std::make_shared< AstNode >( nodeNt, children );
     }
 }

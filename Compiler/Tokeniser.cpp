@@ -133,7 +133,7 @@ Tokeniser::GetNextToken(
         std::string currentSubstring = inputString.substr( startIndex, endIndex - startIndex );
         // If the current substring matches a token, record it as the latest valid end index.
         TokenType tokenType = GetTokenType( currentSubstring );
-        if ( INVALID_TOKEN == tokenType )
+        if ( TokenType::INVALID_TOKEN == tokenType )
         {
             // If substring is >1 chars, then it is invalid because it represents the combination of the edges
             // of 2 tokens. This isn't permitted if both 'borders' are alphanumeric or _, e.g. tokens "for" and "1"
