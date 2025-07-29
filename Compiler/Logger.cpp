@@ -81,10 +81,12 @@ Logger::LogLevelToString(
             return "WARN";
         case INFO:
             return "INFO";
+        case INFO_MEDIUM_LEVEL:
+            return "INFO_MEDIUM_LEVEL";
         case INFO_LOW_LEVEL:
             return "INFO_LOW_LEVEL";
         default:
-            throw std::runtime_error( "Unknown log level" + std::to_string( logLevel ) );
+            throw std::runtime_error( "Unknown log level " + std::to_string( logLevel ) );
     }
 }
 

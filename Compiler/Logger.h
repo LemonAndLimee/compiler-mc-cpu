@@ -12,6 +12,7 @@ enum LogLevel
     ERROR,
     WARN,
     INFO,
+    INFO_MEDIUM_LEVEL,
     INFO_LOW_LEVEL
 };
 
@@ -33,6 +34,7 @@ public:
     #define LOG_ERROR( message ) LOG( LogLevel::ERROR, message )
     #define LOG_WARN( message ) LOG( LogLevel::WARN, message )
     #define LOG_INFO( message ) LOG( LogLevel::INFO, message )
+    #define LOG_INFO_MEDIUM_LEVEL( message ) LOG( LogLevel::INFO_MEDIUM_LEVEL, message )
     #define LOG_INFO_LOW_LEVEL( message ) LOG( LogLevel::INFO_LOW_LEVEL, message )
 
     void SetLogLevel( LogLevel level );

@@ -22,9 +22,16 @@ RunCompiler(
     Tokens tokens;
     try
     {
+        LOG_INFO( "Converting program file into tokens..." );
         std::string inputFileString = FileIO::ReadFileToString( inputFile );
         Tokeniser::UPtr tokeniser = std::make_unique< Tokeniser >();
         tokens = tokeniser->ConvertStringToTokens( inputFileString );
+
+        if ( tokens.empty() )
+        {
+            LOG_WARN( "No tokens found - is your program file empty?" );
+            return true;
+        }
     }
     catch ( std::exception& e )
     {
@@ -35,10 +42,16 @@ RunCompiler(
     AstNode::Ptr abstractSyntaxTree;
     try
     {
+        LOG_INFO( "Converting tokens into an abstract syntax tree..." );
         AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >();
         constexpr GrammarSymbols::NT startingNtSymbol { Block };
-        size_t tokenIndex{ 0u };
         abstractSyntaxTree = astGenerator->GenerateAst( tokens, startingNtSymbol, false );
+
+        if ( nullptr == abstractSyntaxTree )
+        {
+            LOG_ERROR( "Failed to generate abstract syntax tree: nullptr was returned." );
+            return false;
+        }
     }
     catch ( std::exception& e )
     {
@@ -74,7 +87,8 @@ main(
             helpMsg += "-o (--output)\tPath to output file containing generated assembly language."
                        " If left blank will default to ./output.txt\n";
             helpMsg += "-l (--logLevel)\tLogging level:\n"
-                       "\t\t- 0: NONE\n\t\t- 1: ERROR\n\t\t- 2: WARN\n\t\t- 3: INFO\n\t\t- 4: INFO_LOW_LEVEL\n";
+                       "\t\t- 0: NONE\n\t\t- 1: ERROR\n\t\t- 2: WARN\n\t\t- 3: INFO\n\t\t"
+                       "-4: INFO_MEDIUM_LEVEL\n\t\t- 4: INFO_LOW_LEVEL\n";
             std::cout << helpMsg;
         }
         else if ( "--input" == currentArg || "-i" == currentArg )
@@ -118,6 +132,7 @@ main(
                     { "ERROR", LogLevel::ERROR },
                     { "WARN", LogLevel::WARN },
                     { "INFO", LogLevel::INFO },
+                    { "INFO_MEDIUM_LEVEL", LogLevel::INFO_MEDIUM_LEVEL },
                     { "INFO_LOW_LEVEL", LogLevel::INFO_LOW_LEVEL }
                 };
 
