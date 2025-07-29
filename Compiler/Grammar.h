@@ -147,7 +147,7 @@ namespace GrammarRules
     using namespace GrammarSymbols;
 
     using Rule = std::vector< Symbol >;
-    using Rules = std::set< Rule >;
+    using Rules = std::vector< Rule >;
 
     std::string ConvertRuleToString( const Rule& rule );
 
