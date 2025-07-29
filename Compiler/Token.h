@@ -25,6 +25,7 @@ public:
     std::string ToString();
 
     static std::string ConvertTokensToString( const std::deque< Token::Ptr >& tokens );
+    static std::string ConvertTokensToString( const std::deque< Token::Ptr >& tokens, size_t numTokens );
 
     TokenType m_type;
 

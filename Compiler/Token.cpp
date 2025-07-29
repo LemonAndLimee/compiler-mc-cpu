@@ -84,3 +84,30 @@ Token::ConvertTokensToString(
 
     return tokensString;
 }
+
+/**
+ * Converts the first x elements in collection of tokens into human-readable string form.
+ *
+ * \param[in]  tokens     Collection of tokens.
+ * \param[in]  numTokens  Number of tokens to convert to string, starting at the beginning of the collection.
+ *
+ * \return String form of tokens.
+ */
+std::string
+Token::ConvertTokensToString(
+    const Tokens& tokens,
+    size_t numTokens
+)
+{
+    std::string tokensString;
+    for ( size_t i = 0; i < numTokens; ++i )
+    {
+        tokensString += tokens[i]->ToString() + ", ";
+    }
+
+    // Pop off the leftover comma and space
+    tokensString.pop_back();
+    tokensString.pop_back();
+
+    return tokensString;
+}
