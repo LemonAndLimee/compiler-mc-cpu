@@ -179,11 +179,10 @@ BOOST_AUTO_TEST_SUITE( ConvertMultipleLinesTests )
     };
 
     Tokens expectedTokens;
-    expectedTokens.reserve( expectedLineTokens.size() * 3u );
-
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
+    expectedTokens.resize( expectedLineTokens.size() * 3 );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() + expectedLineTokens.size() );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() + ( expectedLineTokens.size() * 2 ) );
 
     CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
@@ -242,10 +241,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_MiddleCommented )
     };
 
     Tokens expectedTokens;
-    expectedTokens.reserve( expectedLineTokens.size() * 2u );
-
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
+    expectedTokens.resize( expectedLineTokens.size() * 2 );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() + expectedLineTokens.size() );
 
     CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
@@ -276,10 +274,9 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleLines_OneWhitespace )
     };
 
     Tokens expectedTokens;
-    expectedTokens.reserve( expectedLineTokens.size() * 2u );
-
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
-    expectedTokens.insert( expectedTokens.end(), expectedLineTokens.begin(), expectedLineTokens.end() );
+    expectedTokens.resize( expectedLineTokens.size() * 2 );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() );
+    std::copy( expectedLineTokens.begin(), expectedLineTokens.end(), expectedTokens.begin() + expectedLineTokens.size() );
 
     CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }
