@@ -22,8 +22,6 @@ protected:
     bool TryRule( Tokens& tokens,
                   const Rule& rule,
                   bool allowLeftoverTokens,
-                  std::vector< AstNode::Child >& children );
+                  AstNode::Elements& elements );
 
-    AstNode::Ptr CreateNodeFromChildren( const std::vector< AstNode::Child >& children,
-                                         GrammarSymbols::NT nodeNt );
 };

@@ -2,67 +2,110 @@
 
 /**
  * \brief  Creates an AST node instance from a given set of child nodes/tokens. Assigns the node label according to
- *         the set of children.
+ *         the set of elements. Throws if there are more than 1 elements of the node label type, or if no elements
+ *         are in the elements container.
  *
- * \param[in]  children  Child nodes or tokens belonging to the node being created.
+ * \param[in]  elements  Child nodes or tokens belonging to the node being created. Any token is either skipped,
+ *                       selected as node label, or made into a child node.
  * \param[in]  nodeNt    The NT symbol to which this node's rule belongs. If an operator cannot be decided, this is
  *                       used as the node label.
  *
  * \return  Ptr to the created AST node.
  */
 AstNode::Ptr
-AstNode::CreateNodeFromChildren(
-    const std::vector< AstNode::Child >& children,
+AstNode::CreateNodeFromRuleElements(
+    const Elements& elements,
     GrammarSymbols::NT nodeNt
 )
 {
     std::string ntString = GrammarSymbols::ConvertSymbolToString( nodeNt );
-    LOG_INFO_MEDIUM_LEVEL( "Creating node for " + ntString + " with " + std::to_string( children.size() ) 
-                           + " children." );
-    // Set to valid value if a terminal symbol label is found - if still invalid after all children have been
-    // checked, the node NT will be used.
-    GrammarSymbols::T terminalNodeLabel = T::INVALID_TOKEN;
-    size_t terminalNodeLabelIndex;
-
-    // Search through children for node label if exists - throws if more than 1 is found.
-    for ( size_t i = 0; i < children.size(); ++i )
+    LOG_INFO_MEDIUM_LEVEL( "Creating node for " + ntString + " with " + std::to_string( elements.size() ) 
+                           + " elements." );
+    
+    if ( elements.empty() )
     {
-        AstNode::Child child = children[i];
+        LOG_ERROR( "Tried to create node from zero elements." );
+        std::runtime_error( "Tried to create node from zero elements." );
+    }
+
+    // Set to valid value if a terminal symbol label is found - if still invalid after all elements have been
+    // checked, the node NT will be used.
+    GrammarSymbols::Symbol nodeLabel = T::INVALID_TOKEN;
+    // Children to be assigned to created node.
+    AstNode::Children nodeChildren;
+
+    // Search through elements for node label if exists - throws if more than 1 is found.
+    for ( size_t i = 0; i < elements.size(); ++i )
+    {
+        Element element = elements[i];
         // If child is a token
-        if ( const Token::Ptr* pToken = std::get_if< Token::Ptr >( &child ) )
+        if ( std::holds_alternative< Token::Ptr >( element ) )
         {
-            TokenType tokenType = ( *pToken )->m_type;
+            Token::Ptr token = std::get< Token::Ptr >( element );
+            TokenType tokenType = token->m_type;
             // If token is node label type, mark it as such.
             if ( g_nodeLabelTerminals.end() != g_nodeLabelTerminals.find( tokenType ) )
             {
-                if ( T::INVALID_TOKEN != terminalNodeLabel )
+                // If a node label has already been found throw error
+                if ( T::INVALID_TOKEN != nodeLabel )
                 {
                     std::string errMsg = "Creating node for " + GrammarSymbols::ConvertSymbolToString( nodeNt );
-                    errMsg += ": gathered children have more than one node label type: ";
-                    errMsg += TokenTypes::ConvertTokenTypeToString( terminalNodeLabel ) + ", ";
+                    errMsg += ": gathered elements have more than one node label type: ";
+                    errMsg += TokenTypes::ConvertTokenTypeToString( static_cast< TokenType >( nodeLabel ) ) + ", ";
                     errMsg += TokenTypes::ConvertTokenTypeToString( tokenType );
                     LOG_ERROR( errMsg );
-                    throw std::runtime_error( "Creating node: children have more than one node label type." );
+                    throw std::runtime_error( "Creating node: elements have more than one node label type." );
                 }
                 LOG_INFO_LOW_LEVEL( "Found terminal node label: " + TokenTypes::ConvertTokenTypeToString( tokenType ) );
-                terminalNodeLabel = tokenType;
-                terminalNodeLabelIndex = i;
+                nodeLabel = tokenType;
             }
+            // Else if token type can be skipped, ignore
+            else if ( g_skipForAstTerminals.end() != g_skipForAstTerminals.find( tokenType ) )
+            {
+                continue;
+            }
+            // Otherwise, create new wrapper node and add to children
+            else
+            {
+                AstNode::Elements tokenElements { token };
+                AstNode::Ptr wrapperNode = CreateNodeFromRuleElements( tokenElements, nodeNt );
+                nodeChildren.push_back( wrapperNode );
+            }
+        }
+
+        // Else if element is an AST node, add to children
+        else
+        {
+            AstNode::Ptr node = std::get< AstNode::Ptr >( element );
+            nodeChildren.push_back( node );
         }
     }
 
-    // If a terminal node label was found, use it and remove it from children
-    if ( T::INVALID_TOKEN != terminalNodeLabel )
+    std::string nodeLabelString = TokenTypes::ConvertTokenTypeToString( static_cast< TokenType >( nodeLabel ) );
+    // If a terminal node label was not found, use non-terminal argument instead
+    if ( T::INVALID_TOKEN == nodeLabel )
     {
-        LOG_INFO_MEDIUM_LEVEL( "Creating node with label: " + TokenTypes::ConvertTokenTypeToString( terminalNodeLabel ) );
-        std::vector< AstNode::Child > childrenCopy = children;
-        childrenCopy.erase( childrenCopy.begin() + terminalNodeLabelIndex );
-        return std::make_shared< AstNode >( terminalNodeLabel, childrenCopy );
+        nodeLabel = nodeNt;
+        nodeLabelString = ntString;
+    }
+
+    LOG_INFO_MEDIUM_LEVEL( "Creating node with label: " + nodeLabelString );
+    return std::make_shared< AstNode >( nodeLabel, nodeChildren );
+}
+
+/**
+ * \brief  Indicates whether node is storing anything, i.e. a token or child nodes.
+ * 
+ * \return  True if storage is in use, false otherwise.
+ */
+bool
+AstNode::IsStorageInUse() {
+    if ( std::holds_alternative< Token::Ptr >( m_storage ) )
+    {
+        return nullptr != std::get< Token::Ptr >( m_storage );
     }
     else
     {
-        LOG_INFO_MEDIUM_LEVEL( "Creating node with label: " + ntString );
-        // Else use NT label and original set of children
-        return std::make_shared< AstNode >( nodeNt, children );
+        return !std::get< Children >( m_storage ).empty();
     }
 }

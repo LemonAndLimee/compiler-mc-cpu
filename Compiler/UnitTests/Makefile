@@ -2,7 +2,9 @@
 CXX = g++
 
 # Compiler flags
-CXXFLAGS = -Wl -g -std=c++17 -DOS_X
+CXXFLAGS = -Wall -g -std=c++17 -DOS_X
+
+LDFLAGS=-Wl,-rpath,/usr/local/boost/boost_1_87_0/lib/
 
 # Target executable
 TARGET_DIR=Bin
@@ -31,8 +33,7 @@ main_build:
 	cd .. && make
 
 main_build_clean:
-	cd ..
-	make clean
+	cd .. && make clean
 
 rebuild: main_build_clean clean all
 
@@ -43,11 +44,11 @@ directory:
 
 # Rule to link object files into the target executable
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(MAIN_PROJ_OBJS) $(INC) $(LIB_DIRs) $(LIBS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $(TARGET) $(OBJS) $(MAIN_PROJ_OBJS) $(INC) $(LIB_DIRs) $(LIBS)
 
 # Rule to compile .cpp files into .o files
 $(OBJS_DIR)/%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INC) $(LIB_DIRs) $(LIBS)
+	$(CXX) $(CXXFLAGS) -c $< -o $@ $(INC)
 
 # Rule to run the executable
 run: $(TARGET)

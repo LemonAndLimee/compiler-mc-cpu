@@ -32,6 +32,8 @@ TokenTypes::ConvertTokenTypeToString (
         return "byte";
     case IDENTIFIER:
         return "id";
+    case INVALID_TOKEN:
+        return "invalid";
     default:
         std::string errMsg = "Unknown token type " + std::to_string( type );
         LOG_ERROR( errMsg );

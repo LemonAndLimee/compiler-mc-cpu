@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE( ConvertPatternMatchSingleToken )
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
     Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
 
-    Token::Ptr expectedToken = std::make_shared<Token>( IDENTIFIER, std::make_shared<TokenValue>( "variableName") );
+    Token::Ptr expectedToken = std::make_shared<Token>( expectedTokenType, std::make_shared<TokenValue>( stringToConvert ) );
     Tokens expectedTokens{ expectedToken };
     CheckTokensAgainstExpected( expectedTokens, outputTokens );
 }

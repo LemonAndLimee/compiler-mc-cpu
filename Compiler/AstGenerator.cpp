@@ -42,8 +42,8 @@ AstGenerator::GenerateAst(
     Rules rules =  g_nonTerminalRuleSets.find( startingNt )->second;
     for ( Rule currentRule : rules )
     {
-        // Children of the node we are building
-        std::vector< AstNode::Child > children;
+        // Child elements of the node we are building
+        AstNode::Elements elements;
         
         // Make copy of tokens to try this rule with
         Tokens tokensCopy = tokens;
@@ -51,7 +51,7 @@ AstGenerator::GenerateAst(
         std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
         LOG_INFO_MEDIUM_LEVEL( "Inside " + startingNtString + ": trying rule '" + ruleString );
         // If rule doesn't match tokens list, ignore and continue
-        if ( !TryRule( tokensCopy, currentRule, allowLeftoverTokens, children ) )
+        if ( !TryRule( tokensCopy, currentRule, allowLeftoverTokens, elements ) )
         {
             LOG_INFO_MEDIUM_LEVEL( "Inside " + startingNtString +  ": no match for rule '" + ruleString + "'" );
             continue;
@@ -71,7 +71,7 @@ AstGenerator::GenerateAst(
             }
         }
         
-        if ( children.empty() )
+        if ( elements.empty() )
         {
             std::string errMsg = "Rule match found for '" + ruleString + "' but no child nodes or tokens created.";
             LOG_ERROR( errMsg );
@@ -87,7 +87,7 @@ AstGenerator::GenerateAst(
 
         LOG_INFO_MEDIUM_LEVEL( "Found match for '" + ruleString + "', creating AST node from children..." );
         // Construct an AST node from children
-        return AstNode::CreateNodeFromChildren( children, startingNt );
+        return AstNode::CreateNodeFromRuleElements( elements, startingNt );
     }
 
     // If the loop is exited and no rule match has been found
@@ -104,7 +104,7 @@ AstGenerator::GenerateAst(
  * \param[in]      rule        The current rule that is being tested. Consists of symbols, either terminal or
  *                             non-terminal.
  * \param[in]      allowLeftoverTokens  Whether the parent rule allows leftover tokens.
- * \param[out]     children    Child nodes or tokens belonging to the rule being tested.
+ * \param[out]     elements    Child nodes or tokens belonging to the rule being tested.
  *
  * \return  True if the rule could successfully be matched to the tokens, false otherwise.
  */
@@ -113,7 +113,7 @@ AstGenerator::TryRule(
     Tokens& tokens,
     const Rule& rule,
     bool allowLeftoverTokens,
-    std::vector< AstNode::Child >& children
+    AstNode::Elements& elements
 )
 {
     std::string ruleString = GrammarRules::ConvertRuleToString( rule );
@@ -146,10 +146,10 @@ AstGenerator::TryRule(
                 LOG_INFO_MEDIUM_LEVEL( "Symbol matches current token " + frontToken->ToString() + "." );
             }
 
-            // If token type not to be skipped, add to children and continue through the rest of the rule.
+            // If token type not to be skipped, add to elements and continue through the rest of the rule.
             if ( GrammarSymbols::g_skipForAstTerminals.end() == GrammarSymbols::g_skipForAstTerminals.find( terminalSymbol ) )
             {
-                children.push_back( frontToken );
+                elements.push_back( frontToken );
                 tokens.pop_front();
                 LOG_INFO_LOW_LEVEL( "Added '" + symbolString + "' to children." );
             }
@@ -163,7 +163,7 @@ AstGenerator::TryRule(
         }
 
         // Else if symbol non terminal, call get AST node on that rule name
-        // Then add this to children
+        // Then add this to elements
         else if ( SymbolType::NonTerminal == symbolType )
         {
             LOG_INFO_MEDIUM_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
@@ -185,9 +185,9 @@ AstGenerator::TryRule(
                 LOG_INFO_MEDIUM_LEVEL( "GenerateAst() returned nullptr. Rejecting rule '" + ruleString + "'" );
                 return false;
             }
-            LOG_INFO_MEDIUM_LEVEL( "Successfully generated AST for '" + symbolString + "': adding to children." );
+            LOG_INFO_MEDIUM_LEVEL( "Successfully generated AST for '" + symbolString + "': adding to elements." );
             LOG_INFO_LOW_LEVEL( "Front tokens are now: " + Token::ConvertTokensToString( tokens, 3 ) + "..." );
-            children.push_back( astNode );
+            elements.push_back( astNode );
             continue;
         }
 

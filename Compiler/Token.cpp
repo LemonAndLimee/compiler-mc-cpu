@@ -18,6 +18,22 @@ Token::Token( TokenType type, TokenValue::Ptr value )
 {
 }
 
+Token::Token( TokenType type, uint8_t numericValue )
+: m_type( type ),
+  m_value( std::make_shared< TokenValue >( numericValue ) )
+{
+}
+Token::Token( TokenType type, std::string stringValue )
+: m_type( type ),
+  m_value( std::make_shared< TokenValue >( stringValue ) )
+{
+}
+Token::Token( TokenType type, DataType dataTypeValue )
+: m_type( type ),
+  m_value( std::make_shared< TokenValue >( dataTypeValue ) )
+{
+}
+
 /**
  * Converts token into human-readable string form.
  *

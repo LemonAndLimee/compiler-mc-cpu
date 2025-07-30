@@ -13,22 +13,35 @@ class AstNode
 {
 public:
     using Ptr = std::shared_ptr< AstNode >;
-    using Child = std::variant< AstNode::Ptr, Token::Ptr >;
 
-    AstNode( GrammarSymbols::Symbol nodeLabel, const std::vector< Child >& children )
+    /**
+     * \brief  Represents the information held by an AST node: can either be the node itself or a token, which is
+     *         either skipped during tree creation, or incorporated as a child node or as the node label.
+     */
+    using Element = std::variant< AstNode::Ptr, Token::Ptr >;
+    using Elements = std::vector< Element >;
+
+    using Children = std::vector< Ptr >;
+
+    AstNode( GrammarSymbols::Symbol nodeLabel, const Children& children )
     : m_nodeLabel( nodeLabel ),
-      m_children( children )
-    {
-    }
+      m_storage( children )
+    {}
+    AstNode( GrammarSymbols::Symbol nodeLabel, Token::Ptr token )
+    : m_nodeLabel( nodeLabel ),
+      m_storage ( token )
+    {}
 
-    static AstNode::Ptr CreateNodeFromChildren( const std::vector< AstNode::Child >& children,
-                                                GrammarSymbols::NT nodeNt );
+    static AstNode::Ptr CreateNodeFromRuleElements( const Elements& elements,
+                                                    GrammarSymbols::NT nodeNt );
+    
+    bool IsStorageInUse();
 
-private:
     // Describes the relationship of the node, i.e. how its children relate to each other.
     // This can be a token type e.g. PLUS, or a non-terminal symbol label (e.g. For_init).
     GrammarSymbols::Symbol m_nodeLabel;
 
-    // Child nodes in the tree - can be AST nodes or Tokens.
-    std::vector< Child > m_children;
+    // The element stored by this node: A node can only store a token or a set of child nodes, not both.
+    // A node acts as a wrapper around a token, or as a more complex sub-tree.
+    std::variant< Token::Ptr, Children > m_storage;
 };
