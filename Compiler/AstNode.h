@@ -21,6 +21,9 @@ public:
     {
     }
 
+    static AstNode::Ptr CreateNodeFromChildren( const std::vector< AstNode::Child >& children,
+                                                GrammarSymbols::NT nodeNt );
+
 private:
     // Describes the relationship of the node, i.e. how its children relate to each other.
     // This can be a token type e.g. PLUS, or a non-terminal symbol label (e.g. For_init).

@@ -11,7 +11,6 @@ using namespace GrammarRules;
 class AstGenerator
 {
 public:
-    using Ptr = std::shared_ptr< AstGenerator >;
     using UPtr = std::unique_ptr< AstGenerator >;
     AstGenerator() = default;
 
@@ -19,7 +18,7 @@ public:
                               GrammarSymbols::NT startingNt,
                               bool allowLeftoverTokens );
 
-private:
+protected:
     bool TryRule( Tokens& tokens,
                   const Rule& rule,
                   bool allowLeftoverTokens,

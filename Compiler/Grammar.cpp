@@ -75,12 +75,6 @@ GrammarRules::ConvertRuleToString(
 )
 {
     std::string ruleString;
-    //for ( Rule::iterator iter = rule.begin(); iter != rule.end(); ++iter )
-    //{
-    //    ruleString += GrammarSymbols::ConvertSymbolToString( *iter ) + " ";
-    //}
-
-    //ruleString.pop_back();
 
     for ( size_t i = 0; i < rule.size(); ++i )
     {
