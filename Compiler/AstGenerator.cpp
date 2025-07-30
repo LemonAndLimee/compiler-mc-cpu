@@ -87,7 +87,7 @@ AstGenerator::GenerateAst(
 
         LOG_INFO_MEDIUM_LEVEL( "Found match for '" + ruleString + "', creating AST node from children..." );
         // Construct an AST node from children
-        return AstNode::CreateNodeFromRuleElements( elements, startingNt );
+        return AstNode::GetNodeFromRuleElements( elements, startingNt );
     }
 
     // If the loop is exited and no rule match has been found

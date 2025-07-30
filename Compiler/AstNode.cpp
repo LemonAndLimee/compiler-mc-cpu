@@ -1,9 +1,10 @@
 #include "AstNode.h"
 
 /**
- * \brief  Creates an AST node instance from a given set of child nodes/tokens. Assigns the node label according to
+ * \brief  Returns an AST node instance from a given set of child nodes/tokens. Assigns the node label according to
  *         the set of elements. Throws if there are more than 1 elements of the node label type, or if no elements
- *         are in the elements container.
+ *         are in the elements container. If the given elements contains only 1 child AST node, this node will be
+ *         returned instead of a new one being created.
  *
  * \param[in]  elements  Child nodes or tokens belonging to the node being created. Any token is either skipped,
  *                       selected as node label, or made into a child node.
@@ -13,7 +14,7 @@
  * \return  Ptr to the created AST node.
  */
 AstNode::Ptr
-AstNode::CreateNodeFromRuleElements(
+AstNode::GetNodeFromRuleElements(
     const Elements& elements,
     GrammarSymbols::NT nodeNt
 )
@@ -25,7 +26,7 @@ AstNode::CreateNodeFromRuleElements(
     if ( elements.empty() )
     {
         LOG_ERROR( "Tried to create node from zero elements." );
-        std::runtime_error( "Tried to create node from zero elements." );
+        throw std::runtime_error( "Tried to create node from zero elements." );
     }
 
     // Set to valid value if a terminal symbol label is found - if still invalid after all elements have been
@@ -67,8 +68,7 @@ AstNode::CreateNodeFromRuleElements(
             // Otherwise, create new wrapper node and add to children
             else
             {
-                AstNode::Elements tokenElements { token };
-                AstNode::Ptr wrapperNode = CreateNodeFromRuleElements( tokenElements, nodeNt );
+                AstNode::Ptr wrapperNode = std::make_shared< AstNode >( tokenType, token );
                 nodeChildren.push_back( wrapperNode );
             }
         }
@@ -85,6 +85,19 @@ AstNode::CreateNodeFromRuleElements(
     // If a terminal node label was not found, use non-terminal argument instead
     if ( T::INVALID_TOKEN == nodeLabel )
     {
+        // If no node label found AND children empty, this means all elements were skipped
+        if ( nodeChildren.empty() )
+        {
+            LOG_ERROR( "All node elements skipped: cannot create a node with no elements." );
+            throw std::runtime_error( "All node elements skipped: cannot create a node with no elements." );
+        }
+        // If no node label found AND only one child, this means the only significant element/s
+        // was an AST node. In this case, we can return that node instead
+        else if ( 1u == nodeChildren.size() )
+        {
+            LOG_INFO_MEDIUM_LEVEL( "Method was passed one node element: returning this node." );
+            return nodeChildren[0];
+        }
         nodeLabel = nodeNt;
         nodeLabelString = ntString;
     }

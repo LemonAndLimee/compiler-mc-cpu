@@ -32,7 +32,7 @@ public:
       m_storage ( token )
     {}
 
-    static AstNode::Ptr CreateNodeFromRuleElements( const Elements& elements,
+    static AstNode::Ptr GetNodeFromRuleElements( const Elements& elements,
                                                     GrammarSymbols::NT nodeNt );
     
     bool IsStorageInUse();

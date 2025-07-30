@@ -86,6 +86,10 @@ namespace GrammarSymbols
     // Important: a rule may only contain max. 1 node label type symbols.
     const std::unordered_set< T > g_nodeLabelTerminals {
         ASSIGN,
+        IF,
+        ELSE,
+        FOR,
+        WHILE,
         PLUS,
         MINUS,
         MULTIPLY,

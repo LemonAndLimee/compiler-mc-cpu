@@ -41,20 +41,20 @@ public:
     }
 };
 
-BOOST_FIXTURE_TEST_SUITE( CreateNodeFromRuleElementsTests, AstNodeTestsFixture )
+BOOST_FIXTURE_TEST_SUITE( GetNodeFromRuleElementsTests, AstNodeTestsFixture )
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with an empty elements container, it throws an exception.
+ * Tests that when GetNodeFromRuleElements is called with an empty elements container, it throws an exception.
  */
 BOOST_AUTO_TEST_CASE( EmptyElements )
 {
     GrammarSymbols::NT nonTerminalArg { Block };
     AstNode::Elements elements{};
-    BOOST_CHECK_THROW( AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
+    BOOST_CHECK_THROW( AstNode::GetNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with a single element that is a node label terminal, it returns
+ * Tests that when GetNodeFromRuleElements is called with a single element that is a node label terminal, it returns
  * an AST node with no children, and this token as the node label.
  */
 BOOST_AUTO_TEST_CASE( SingleNodeLabelTypeTerminal )
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE( SingleNodeLabelTypeTerminal )
     AstNode::Elements elements { std::make_shared< Token >( nodeLabelTokenType ) };
     GrammarSymbols::NT nonTerminalArg { Block };
 
-    AstNode::Ptr returnedNode = AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg );
+    AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
 
     BOOST_CHECK_EQUAL( false, returnedNode->IsStorageInUse() );
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE( SingleNodeLabelTypeTerminal )
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with only elements that are a skip-for-AST type terminal, it
+ * Tests that when GetNodeFromRuleElements is called with only elements that are a skip-for-AST type terminal, it
  * skips and therefore has no elements, throwing an exception.
  */
 BOOST_AUTO_TEST_CASE( OnlySkipTypeTerminals )
@@ -89,11 +89,11 @@ BOOST_AUTO_TEST_CASE( OnlySkipTypeTerminals )
 
     GrammarSymbols::NT nonTerminalArg { Block };
 
-    BOOST_CHECK_THROW( AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
+    BOOST_CHECK_THROW( AstNode::GetNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with a single terminal that is not a node label type,
+ * Tests that when GetNodeFromRuleElements is called with a single terminal that is not a node label type,
  * or a skip type, it returns an AST node with this as its stored token, and the node label as the token's type.
  */
 BOOST_AUTO_TEST_CASE( SingleNonNodeLabelTerminal )
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE( SingleNonNodeLabelTerminal )
     AstNode::Elements elements { token };
     GrammarSymbols::NT nonTerminalArg { Block };
 
-    AstNode::Ptr returnedNode = AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg );
+    AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
 
     // Check node has our token as its stored token
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE( SingleNonNodeLabelTerminal )
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with a single element that is another AST node, it returns this
+ * Tests that when GetNodeFromRuleElements is called with a single element that is another AST node, it returns this
  * node instead of creating one.
  */
 BOOST_AUTO_TEST_CASE( SingleNonTerminal )
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE( SingleNonTerminal )
 
     AstNode::Elements elements { fakeAstNode };
     GrammarSymbols::NT nonTerminalArg { Block };
-    AstNode::Ptr returnedNode = AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg );
+    AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
 
     BOOST_REQUIRE( nullptr != returnedNode );
 
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE( SingleNonTerminal )
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with multiple elements, of which one is a node label type, it
+ * Tests that when GetNodeFromRuleElements is called with multiple elements, of which one is a node label type, it
  * returns an AST node with this as the node label, and the given elements as children, with the node label token
  * removed.
  */
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_SingleTerminalNodeLabel )
     };
     
     GrammarSymbols::NT nonTerminalArg { Block };
-    AstNode::Ptr returnedNode = AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg );
+    AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
 
     // Expect node label to be the node label token type
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_SingleTerminalNodeLabel )
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with multiple children, of which more than one are node label
+ * Tests that when GetNodeFromRuleElements is called with multiple children, of which more than one are node label
  * types, it throws an exception.
  */
 BOOST_AUTO_TEST_CASE( MultipleChildren_TwoNodeLabelTypes_Throws )
@@ -198,11 +198,11 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_TwoNodeLabelTypes_Throws )
     };
     
     GrammarSymbols::NT nonTerminalArg { Block };
-    BOOST_CHECK_THROW( AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
+    BOOST_CHECK_THROW( AstNode::GetNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
 }
 
 /**
- * Tests that when CreateNodeFromRuleElements is called with multiple children, of which none are node label types, it
+ * Tests that when GetNodeFromRuleElements is called with multiple children, of which none are node label types, it
  * returns an AST node with all the given children, and the node label set to the provided NT argument.
  */
 BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
@@ -221,7 +221,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
     };
     
     GrammarSymbols::NT nonTerminalArg { Block };
-    AstNode::Ptr returnedNode = AstNode::CreateNodeFromRuleElements( elements, nonTerminalArg );
+    AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
 
     // Expect node label to be the non-terminal symbol argument since it can't find a node label element.
@@ -239,4 +239,4 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
     CheckNodeIsStoringToken( expectedTokenWrapperChild, regularToken );
 }
 
-BOOST_AUTO_TEST_SUITE_END() // CreateNodeFromRuleElementsTests
+BOOST_AUTO_TEST_SUITE_END() // GetNodeFromRuleElementsTests
