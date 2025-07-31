@@ -106,6 +106,8 @@ Token::ConvertTokensToString(
  *
  * \param[in]  tokens     Collection of tokens.
  * \param[in]  numTokens  Number of tokens to convert to string, starting at the beginning of the collection.
+ *                        If this is greater than the length of tokens, the first x available elements will be
+ *                        converted.
  *
  * \return String form of tokens.
  */
@@ -115,12 +117,20 @@ Token::ConvertTokensToString(
     size_t numTokens
 )
 {
-    std::string tokensString;
+    std::string tokensString = "";
+    if ( tokens.empty() )
+    {
+        return tokensString;
+    }
+    // Else if tokens contains at least 1
+
     for ( size_t i = 0; i < numTokens; ++i )
     {
-        tokensString += tokens[i]->ToString() + ", ";
+        if ( tokens.size() > i )
+        {
+            tokensString += tokens[i]->ToString() + ", ";
+        }
     }
-
     // Pop off the leftover comma and space
     tokensString.pop_back();
     tokensString.pop_back();

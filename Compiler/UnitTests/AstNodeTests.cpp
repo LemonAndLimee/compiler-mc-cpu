@@ -1,6 +1,8 @@
 #include <boost/test/unit_test.hpp>
 #include "AstNode.h"
 
+BOOST_AUTO_TEST_SUITE( AstNodeTests )
+
 class AstNodeTestsFixture
 {
 public:
@@ -240,3 +242,5 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GetNodeFromRuleElementsTests
+
+BOOST_AUTO_TEST_SUITE_END() // AstNodeTests

@@ -122,3 +122,14 @@ AstNode::IsStorageInUse() {
         return !std::get< Children >( m_storage ).empty();
     }
 }
+
+/**
+ * \brief  Indicates whether node is storing token. Note: this does not check if a value is actually being
+ *         held, only if the variant type is token.
+ * 
+ * \return  True if storing token, false if storing children.
+ */
+bool
+AstNode::IsStoringToken() {
+    return std::holds_alternative< Token::Ptr >( m_storage );
+}

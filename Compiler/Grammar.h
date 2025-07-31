@@ -290,8 +290,10 @@ namespace GrammarRules
             {
                 { T::IDENTIFIER },
                 { T::BYTE },
-                { T::PAREN_OPEN, Logical, T::PAREN_CLOSE },
-                { Logical }
+                // Enforce the use of parentheses for complex statements e.g. 1 + (2 + 3)
+                // TODO: investigate removing this restriction - would have to deal with infinite
+                // recursion.
+                { T::PAREN_OPEN, Logical, T::PAREN_CLOSE }
             }
         },
     };

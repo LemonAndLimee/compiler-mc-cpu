@@ -35,7 +35,9 @@ main_build:
 main_build_clean:
 	cd .. && make clean
 
-rebuild: main_build_clean clean all
+rebuild_test: clean all
+
+rebuild: main_build_clean rebuild_test
 
 # Rule to make objects directory
 directory:

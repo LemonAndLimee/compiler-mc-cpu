@@ -8,7 +8,7 @@
 
 /**
  * \brief Generates an Abstract Syntax tree from a given set of tokens. If the syntax of the tokens
- *        is invalid, it returns nullptr. Note: this method will only edit the tokens argument upon
+ *        is invalid, it returns nullptr. Note: this method will only modify the tokens argument upon
  *        successful AST creation.
  *
  * \param[in,out]  tokens               String of tokens representing the code to be converted.
@@ -30,6 +30,12 @@ AstGenerator::GenerateAst(
     LOG_INFO_MEDIUM_LEVEL( "Generating AST for starting symbol " + startingNtString );
     LOG_INFO_LOW_LEVEL( "Tokens: " + Token::ConvertTokensToString( tokens, 3 )
                         + "... Allow leftover tokens=" + std::to_string( allowLeftoverTokens ) );
+    
+    if ( tokens.empty() )
+    {
+        LOG_INFO_MEDIUM_LEVEL( "Cannot generate AST from zero tokens." );
+        throw std::runtime_error( "Cannot generate AST from zero tokens." );
+    }
 
     if ( 0u == g_nonTerminalRuleSets.count( startingNt ) )
     {
@@ -98,13 +104,15 @@ AstGenerator::GenerateAst(
 
 /**
  * \brief  Tries to resolve a given rule (collection of symbols) from the given list of tokens. Pops tokens
- *         of the front of the given tokens container as it consumes rule symbols.
+ *         of the front of the given tokens container as it consumes rule symbols. Populates the container
+ *         of AST elements with gathered nodes/tokens from the rule.
  *
- * \param[in,out]  tokens      String of tokens representing the code to be converted.
- * \param[in]      rule        The current rule that is being tested. Consists of symbols, either terminal or
- *                             non-terminal.
- * \param[in]      allowLeftoverTokens  Whether the parent rule allows leftover tokens.
- * \param[out]     elements    Child nodes or tokens belonging to the rule being tested.
+ * \param[in,out]  tokens                           String of tokens representing the code to be converted.
+ * \param[in]      rule                             The current rule that is being tested. Consists of symbols,
+ *                                                  either terminal or non-terminal.
+ * \param[in]      allowLeftoverTokensOnLastSymbol  Whether to allow leftover tokens at the end of the rule,
+ *                                                  if the last symbol is non-terminal.
+ * \param[out]     elements                         Child nodes or tokens belonging to the rule being tested.
  *
  * \return  True if the rule could successfully be matched to the tokens, false otherwise.
  */
@@ -112,46 +120,52 @@ bool
 AstGenerator::TryRule(
     Tokens& tokens,
     const Rule& rule,
-    bool allowLeftoverTokens,
+    bool allowLeftoverTokensOnLastSymbol,
     AstNode::Elements& elements
 )
 {
     std::string ruleString = GrammarRules::ConvertRuleToString( rule );
     LOG_INFO_MEDIUM_LEVEL( "Trying rule " + ruleString + " with tokens: " + Token::ConvertTokensToString( tokens, 3 )
                            + "..." );
+
+    // Check each symbol in the rule for a match
     for ( size_t i = 0; i < rule.size(); ++i )
     {
         Symbol symbol = rule[i];
 
         std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
         LOG_INFO_MEDIUM_LEVEL( "Trying symbol '" + symbolString + "' in rule '" + ruleString + "'" );
+        
+        // Reject if we've run out of tokens to consume
+        if ( tokens.empty() )
+        {
+            LOG_INFO_MEDIUM_LEVEL( "Tokens container empty: rejecting rule " + ruleString );
+            return false;
+        }
 
         SymbolType symbolType = GrammarSymbols::GetSymbolType( symbol );
 
         // If symbol is terminal
-        // If rule symbol matches the token currently being pointed at, increment token ptr and continue
-        // If symbol not to be skipped (e.g. {}, (), ;), add the token to children
         if ( SymbolType::Terminal == symbolType )
         {
             LOG_INFO_MEDIUM_LEVEL( "Symbol is terminal: '" + symbolString + "'" );
             TokenType terminalSymbol = static_cast< TokenType >( symbol );
             Token::Ptr frontToken = tokens.front();
+
+            // Check rule symbol matches the token currently being pointed at
             if ( terminalSymbol != frontToken->m_type )
             {
                 LOG_INFO_MEDIUM_LEVEL( "Symbol doesn't match current token " + frontToken->ToString() + ", rejecting rule." );
                 return false;
             }
-            else
-            {
-                LOG_INFO_MEDIUM_LEVEL( "Symbol matches current token " + frontToken->ToString() + "." );
-            }
+            LOG_INFO_MEDIUM_LEVEL( "Symbol matches current token " + frontToken->ToString() + "." );
 
-            // If token type not to be skipped, add to elements and continue through the rest of the rule.
+            // If token type not to be skipped (e.g. {}, (), ;), add to elements and continue through the rest of the rule.
             if ( GrammarSymbols::g_skipForAstTerminals.end() == GrammarSymbols::g_skipForAstTerminals.find( terminalSymbol ) )
             {
                 elements.push_back( frontToken );
                 tokens.pop_front();
-                LOG_INFO_LOW_LEVEL( "Added '" + symbolString + "' to children." );
+                LOG_INFO_LOW_LEVEL( "Added '" + symbolString + "' to elements." );
             }
             else
             {
@@ -163,21 +177,20 @@ AstGenerator::TryRule(
         }
 
         // Else if symbol non terminal, call get AST node on that rule name
-        // Then add this to elements
         else if ( SymbolType::NonTerminal == symbolType )
         {
             LOG_INFO_MEDIUM_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
             GrammarSymbols::NT nonTerminalSymbol = static_cast< NT >( symbol );
-            // Generate sub-tree from the non-terminal symbol.
             
-            // If parent rule is not allowed leftover tokens AND this is the last symbol in the rule,
+            // If not allowed leftover tokens AND this is the last symbol in the rule,
             // disallow leftover tokens on the generated AST
             bool callWithAllowLeftoverTokens{ true };
-            if ( !allowLeftoverTokens && i == rule.size()-1 )
+            if ( !allowLeftoverTokensOnLastSymbol && i == rule.size()-1 )
             {
                 callWithAllowLeftoverTokens = false;
             }
 
+            // Generate sub-tree from the non-terminal symbol and add to elements.
             LOG_INFO_MEDIUM_LEVEL( "Generating AST for '" + symbolString + "'" );
             AstNode::Ptr astNode = GenerateAst( tokens, nonTerminalSymbol, callWithAllowLeftoverTokens );
             if ( nullptr == astNode )

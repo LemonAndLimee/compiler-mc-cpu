@@ -5,4 +5,4 @@ byte multiplyTimes = 3;
 
 while (counter < multiplyTimes) {
     value = value * multiplyValue;
-}
+};

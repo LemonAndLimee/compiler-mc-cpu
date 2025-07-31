@@ -33,9 +33,10 @@ public:
     {}
 
     static AstNode::Ptr GetNodeFromRuleElements( const Elements& elements,
-                                                    GrammarSymbols::NT nodeNt );
+                                                 GrammarSymbols::NT nodeNt );
     
     bool IsStorageInUse();
+    bool IsStoringToken();
 
     // Describes the relationship of the node, i.e. how its children relate to each other.
     // This can be a token type e.g. PLUS, or a non-terminal symbol label (e.g. For_init).
