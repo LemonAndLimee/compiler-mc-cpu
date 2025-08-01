@@ -21,7 +21,6 @@ public:
 
     Token( TokenType type );
     Token( TokenType type, TokenValue::Ptr value );
-    // TODO: template this
     Token( TokenType type, uint8_t numericValue );
     Token( TokenType type, std::string stringValue );
     Token( TokenType type, DataType dataTypeValue );

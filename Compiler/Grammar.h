@@ -156,6 +156,7 @@ namespace GrammarRules
     std::string ConvertRuleToString( const Rule& rule );
 
     // Mapping between non-terminal symbols and the rules they can expand to.
+    // We always want the longest possible rule to be realised, so any rules which are rule + x should go first.
     const std::unordered_map< NT, Rules > g_nonTerminalRuleSets {
         {
             Block,

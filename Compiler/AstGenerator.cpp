@@ -26,6 +26,9 @@ AstGenerator::GenerateAst(
     bool allowLeftoverTokens
 )
 {
+    // TODO: consider an algorithm that is token-led, rather than one which checks each available rule for a match.
+    // The current algorithm has a lot of excess checks, and is almost impossible to use to locate the syntax error.
+
     std::string startingNtString = GrammarSymbols::ConvertSymbolToString( startingNt );
     LOG_INFO_MEDIUM_LEVEL( "Generating AST for starting symbol " + startingNtString );
     LOG_INFO_LOW_LEVEL( "Tokens: " + Token::ConvertTokensToString( tokens, 3 )
@@ -55,7 +58,7 @@ AstGenerator::GenerateAst(
         Tokens tokensCopy = tokens;
 
         std::string ruleString = GrammarRules::ConvertRuleToString( currentRule );
-        LOG_INFO_MEDIUM_LEVEL( "Inside " + startingNtString + ": trying rule '" + ruleString );
+        LOG_INFO_MEDIUM_LEVEL( "Inside " + startingNtString + ": trying rule: " + ruleString );
         // If rule doesn't match tokens list, ignore and continue
         if ( !TryRule( tokensCopy, currentRule, allowLeftoverTokens, elements ) )
         {
@@ -86,10 +89,6 @@ AstGenerator::GenerateAst(
 
         // Swap out original tokens collection so it has all the correct tokens popped off the front
         tokens.swap( tokensCopy );
-
-        // TODO: if only has 1 child:
-        // If child is AstNode, return that instead
-        // Else if child is Token, create node with the token
 
         LOG_INFO_MEDIUM_LEVEL( "Found match for '" + ruleString + "', creating AST node from children..." );
         // Construct an AST node from children
@@ -128,6 +127,36 @@ AstGenerator::TryRule(
     LOG_INFO_MEDIUM_LEVEL( "Trying rule " + ruleString + " with tokens: " + Token::ConvertTokensToString( tokens, 3 )
                            + "..." );
 
+    // Perform look-ahead, and check that any terminal symbols in the rule are present, and in order.
+    // This allows early-stopping without generating further sub-trees.
+    int lastTerminalIndexInTokens{ -1 };
+    for ( Symbol symbol : rule )
+    {
+        if ( SymbolType::Terminal == GrammarSymbols::GetSymbolType( symbol ) )
+        {
+            // Check through tokens, from the position of the last found terminal, to see if the current
+            // terminal symbol exists.
+            bool foundSymbol{ false };
+            for ( size_t tokenIndex = lastTerminalIndexInTokens+1; tokenIndex < tokens.size(); ++tokenIndex )
+            {
+                Token::Ptr token = tokens[tokenIndex];
+                if ( symbol == token->m_type )
+                {
+                    lastTerminalIndexInTokens = tokenIndex;
+                    foundSymbol = true;
+                    break;
+                }
+            }
+            if ( !foundSymbol )
+            {
+                std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
+                LOG_INFO_MEDIUM_LEVEL( "Lookahead: symbol " + symbolString + " could not be found. Rejecting rule "
+                                       + ruleString );
+                return false;
+            }
+        }
+    }
+
     // Check each symbol in the rule for a match
     for ( size_t i = 0; i < rule.size(); ++i )
     {
@@ -148,7 +177,7 @@ AstGenerator::TryRule(
         // If symbol is terminal
         if ( SymbolType::Terminal == symbolType )
         {
-            LOG_INFO_MEDIUM_LEVEL( "Symbol is terminal: '" + symbolString + "'" );
+            LOG_INFO_LOW_LEVEL( "Symbol is terminal: '" + symbolString + "'" );
             TokenType terminalSymbol = static_cast< TokenType >( symbol );
             Token::Ptr frontToken = tokens.front();
 
@@ -179,7 +208,7 @@ AstGenerator::TryRule(
         // Else if symbol non terminal, call get AST node on that rule name
         else if ( SymbolType::NonTerminal == symbolType )
         {
-            LOG_INFO_MEDIUM_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
+            LOG_INFO_LOW_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
             GrammarSymbols::NT nonTerminalSymbol = static_cast< NT >( symbol );
             
             // If not allowed leftover tokens AND this is the last symbol in the rule,
@@ -191,7 +220,7 @@ AstGenerator::TryRule(
             }
 
             // Generate sub-tree from the non-terminal symbol and add to elements.
-            LOG_INFO_MEDIUM_LEVEL( "Generating AST for '" + symbolString + "'" );
+            LOG_INFO_LOW_LEVEL( "Generating AST for '" + symbolString + "'" );
             AstNode::Ptr astNode = GenerateAst( tokens, nonTerminalSymbol, callWithAllowLeftoverTokens );
             if ( nullptr == astNode )
             {
@@ -213,6 +242,6 @@ AstGenerator::TryRule(
     }
 
     // If no symbols have been rejected, the rule matches.
-    LOG_INFO_MEDIUM_LEVEL( "No symbols rejected, returning true for rule '" + ruleString + "'" );
+    LOG_INFO_LOW_LEVEL( "No symbols rejected, returning true for rule '" + ruleString + "'" );
     return true;
 }
