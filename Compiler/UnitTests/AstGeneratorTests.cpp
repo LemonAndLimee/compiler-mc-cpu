@@ -16,9 +16,10 @@ public:
     CheckNodeIsTokenWrapper( AstNode::Ptr node, Token::Ptr token )
     {
         BOOST_CHECK_EQUAL( token->m_type, node->m_nodeLabel );
-        BOOST_CHECK( node->IsStorageInUse() );
-        BOOST_CHECK( node->IsStoringToken() );
-        BOOST_CHECK( *token.get() == *std::get< Token::Ptr >( node->m_storage ).get() );
+        BOOST_REQUIRE( node->IsStorageInUse() );
+        BOOST_REQUIRE( node->IsStoringToken() );
+        Token::Ptr nodeToken = std::get< Token::Ptr >( node->m_storage );
+        BOOST_CHECK( *token.get() == *nodeToken.get() );
     }
 
     AstGenerator::UPtr m_astGenerator;

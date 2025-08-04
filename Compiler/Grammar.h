@@ -60,6 +60,7 @@ namespace GrammarSymbols
     {
         Block = SymbolType::NonTerminal,
         Section,
+        Scoped_block,
         For_loop,
         For_init,
         If_else,
@@ -124,6 +125,7 @@ namespace GrammarSymbols
     const std::unordered_map< NT, std::string > g_nonTerminalStringForms {
         { Block , "Block" },
         { Section , "Section" },
+        { Scoped_block , "Scoped_block" },
         { For_loop , "For_loop" },
         { For_init , "For_init" },
         { If_else , "If_else" },
@@ -175,9 +177,15 @@ namespace GrammarRules
             }
         },
         {
+            Scoped_block,
+            {
+                { T::BRACE_OPEN, Block, T::BRACE_CLOSE }
+            }
+        },
+        {
             For_loop,
             {
-                { T::FOR, For_init, T::BRACE_OPEN, Block, T::BRACE_CLOSE }
+                { T::FOR, For_init, Scoped_block }
             }
         },
         {
@@ -189,20 +197,20 @@ namespace GrammarRules
         {
             If_else,
             {
-                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, T::BRACE_OPEN, Block, T::BRACE_CLOSE },
-                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, T::BRACE_OPEN, Block, T::BRACE_CLOSE, Else }
+                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block },
+                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block, Else }
             }
         },
         {
             Else,
             {
-                { T::ELSE, T::BRACE_OPEN, Block, T::BRACE_CLOSE }
+                { T::ELSE, Scoped_block }
             }
         },
         {
             While_loop,
             {
-                { T::WHILE, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, T::BRACE_OPEN, Block, T::BRACE_CLOSE }
+                { T::WHILE, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block }
             }
         },
         {

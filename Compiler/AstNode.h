@@ -5,6 +5,8 @@
 #pragma once
 #include "Grammar.h"
 #include "Token.h"
+#include "SymbolTable.h"
+
 #include <vector>
 #include <memory>
 #include <variant>
@@ -38,6 +40,8 @@ public:
     bool IsStorageInUse();
     bool IsStoringToken();
 
+    bool IsScopeDefiningNode();
+
     // Describes the relationship of the node, i.e. how its children relate to each other.
     // This can be a token type e.g. PLUS, or a non-terminal symbol label (e.g. For_init).
     GrammarSymbols::Symbol m_nodeLabel;
@@ -45,4 +49,8 @@ public:
     // The element stored by this node: A node can only store a token or a set of child nodes, not both.
     // A node acts as a wrapper around a token, or as a more complex sub-tree.
     std::variant< Token::Ptr, Children > m_storage;
+
+    // If this node is a scope-defining node (e.g. FOR), this is used to store the generated symbol table
+    // corresponding with this scope.
+    SymbolTable::Ptr m_symbolTable;
 };

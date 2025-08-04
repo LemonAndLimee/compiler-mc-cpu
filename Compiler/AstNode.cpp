@@ -112,7 +112,8 @@ AstNode::GetNodeFromRuleElements(
  * \return  True if storage is in use, false otherwise.
  */
 bool
-AstNode::IsStorageInUse() {
+AstNode::IsStorageInUse()
+{
     if ( std::holds_alternative< Token::Ptr >( m_storage ) )
     {
         return nullptr != std::get< Token::Ptr >( m_storage );
@@ -130,6 +131,27 @@ AstNode::IsStorageInUse() {
  * \return  True if storing token, false if storing children.
  */
 bool
-AstNode::IsStoringToken() {
+AstNode::IsStoringToken()
+{
     return std::holds_alternative< Token::Ptr >( m_storage );
+}
+
+/**
+ * \brief  Indicates whether node is a scope-defining type, e.g. the root of a for loop. This can only be the case
+ *         if the node is storing children, not a token.
+ * 
+ * \return  True if node is a scope-definer, false otherwise.
+ */
+bool
+AstNode::IsScopeDefiningNode()
+{
+    // If not storing anything, or storing token, this is not a scope-defining node.
+    if ( !IsStorageInUse() || IsStoringToken() )
+    {
+        return false;
+    }
+
+    // Only scope blocks are considered as a new scope - the condition parts for if statements and loops are considered
+    // part of the parent scope.
+    return Scoped_block == m_nodeLabel;
 }

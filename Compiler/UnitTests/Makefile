@@ -35,7 +35,7 @@ main_build:
 main_build_clean:
 	cd .. && make clean
 
-rebuild_test: clean all
+rebuild_test: clean_target all
 
 rebuild: main_build_clean rebuild_test
 
@@ -56,7 +56,9 @@ $(OBJS_DIR)/%.o: %.cpp
 run: $(TARGET)
 	./$(TARGET)
 
-# Clean rule to remove generated files
-clean:
+clean_target:
 	-rm $(TARGET)
+
+# Clean rule to remove generated files
+clean: clean_target
 	-rm $(OBJS)

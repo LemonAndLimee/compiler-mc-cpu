@@ -4,6 +4,7 @@
 
 #pragma once
 #include <memory>
+#include <string>
 
 #ifdef OS_X
     #include <string.h>
