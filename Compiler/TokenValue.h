@@ -6,10 +6,6 @@
 #include <memory>
 #include <string>
 
-#ifdef OS_X
-    #include <string.h>
-#endif
-
 // Max length that a string value held by the token can be.
 constexpr size_t g_tokenStrValueMaxLen{ 32u };
 
@@ -49,11 +45,7 @@ struct TokenValue
         {
             printf( "Warning: Token value string %s exceeds max character length.\n", stringValue.c_str() );
         }
-#ifdef OS_X
-        strlcpy( m_value.stringValue, stringValue.c_str(), g_tokenStrValueMaxLen );
-#else
         strcpy_s( m_value.stringValue, g_tokenStrValueMaxLen, stringValue.c_str() );
-#endif
     };
     TokenValue( DataType dataTypeValue )
     : m_valueType( TokenValueType::DTYPE )
