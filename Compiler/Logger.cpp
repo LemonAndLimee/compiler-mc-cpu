@@ -11,7 +11,8 @@ Logger::Logger( LogLevel logLevel )
 : m_logLevel( logLevel )
 {
     std::time_t timestamp = time( NULL );
-    struct tm datetime = *localtime( &timestamp );
+    struct tm datetime;
+    localtime_s( &datetime, &timestamp );
 
     char datetimeStr[128];
     std::string conversionFormat = "%m_%d_%y__%H_%M_%S";
@@ -45,7 +46,7 @@ Logger::LogMessage(
     const std::string message,
     const char* codeFile,
     const char* codeFunc,
-    int lineNum 
+    int lineNum
 )
 {
     if ( logLevel <= m_logLevel )

@@ -3,14 +3,16 @@
  * checking and code generation.
  */
 
+#include <stdexcept>
+
 #include "SymbolTable.h"
 #include "Logger.h"
 
 /**
  * \brief  Searches for and returns entry corresponding to the identifier, either in this table or a parent table.
- * 
+ *
  * \param[in]  identifier  The string identifier of the symbol which the entry corresponds to.
- * 
+ *
  * \return  Pointer to the associated symbol table entry, or nullptr if one couldn't be found.
  */
 SymbolTableEntry::Ptr
@@ -35,7 +37,7 @@ SymbolTable::GetEntryIfExists(
 
 /**
  * \brief  Adds entry to symbol table.
- * 
+ *
  * \param[in]  identifier  The string identifier of the symbol which the entry corresponds to.
  * \param[in]  entry       Ptr to the created entry.
  */

@@ -1,4 +1,10 @@
+/**
+ * Contains definition of Abstract Syntax Tree node class.
+ */
+
 #include "AstNode.h"
+
+#include <stdexcept>
 
 /**
  * \brief  Returns an AST node instance from a given set of child nodes/tokens. Assigns the node label according to
@@ -20,9 +26,9 @@ AstNode::GetNodeFromRuleElements(
 )
 {
     std::string ntString = GrammarSymbols::ConvertSymbolToString( nodeNt );
-    LOG_INFO_MEDIUM_LEVEL( "Creating node for " + ntString + " with " + std::to_string( elements.size() ) 
+    LOG_INFO_MEDIUM_LEVEL( "Creating node for " + ntString + " with " + std::to_string( elements.size() )
                            + " elements." );
-    
+
     if ( elements.empty() )
     {
         LOG_ERROR( "Tried to create node from zero elements." );
@@ -108,7 +114,7 @@ AstNode::GetNodeFromRuleElements(
 
 /**
  * \brief  Indicates whether node is storing anything, i.e. a token or child nodes.
- * 
+ *
  * \return  True if storage is in use, false otherwise.
  */
 bool
@@ -127,7 +133,7 @@ AstNode::IsStorageInUse()
 /**
  * \brief  Indicates whether node is storing token. Note: this does not check if a value is actually being
  *         held, only if the variant type is token.
- * 
+ *
  * \return  True if storing token, false if storing children.
  */
 bool
@@ -139,7 +145,7 @@ AstNode::IsStoringToken()
 /**
  * \brief  Indicates whether node is a scope-defining type, e.g. the root of a for loop. This can only be the case
  *         if the node is storing children, not a token.
- * 
+ *
  * \return  True if node is a scope-definer, false otherwise.
  */
 bool

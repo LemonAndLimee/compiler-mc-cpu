@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <memory>
 
 enum LogLevel
 {

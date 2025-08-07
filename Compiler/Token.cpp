@@ -66,7 +66,7 @@ Token::ToString()
             {
                 LOG_WARN( "Unknown token value data type." );
             }
-        } 
+        }
         else
         {
             LOG_WARN( "Unknown token value type." );

@@ -33,7 +33,7 @@ AstGenerator::GenerateAst(
     LOG_INFO_MEDIUM_LEVEL( "Generating AST for starting symbol " + startingNtString );
     LOG_INFO_LOW_LEVEL( "Tokens: " + Token::ConvertTokensToString( tokens, 3 )
                         + "... Allow leftover tokens=" + std::to_string( allowLeftoverTokens ) );
-    
+
     if ( tokens.empty() )
     {
         LOG_INFO_MEDIUM_LEVEL( "Cannot generate AST from zero tokens." );
@@ -53,7 +53,7 @@ AstGenerator::GenerateAst(
     {
         // Child elements of the node we are building
         AstNode::Elements elements;
-        
+
         // Make copy of tokens to try this rule with
         Tokens tokensCopy = tokens;
 
@@ -79,7 +79,7 @@ AstGenerator::GenerateAst(
                 continue;
             }
         }
-        
+
         if ( elements.empty() )
         {
             std::string errMsg = "Rule match found for '" + ruleString + "' but no child nodes or tokens created.";
@@ -164,7 +164,7 @@ AstGenerator::TryRule(
 
         std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
         LOG_INFO_MEDIUM_LEVEL( "Trying symbol '" + symbolString + "' in rule '" + ruleString + "'" );
-        
+
         // Reject if we've run out of tokens to consume
         if ( tokens.empty() )
         {
@@ -210,7 +210,7 @@ AstGenerator::TryRule(
         {
             LOG_INFO_LOW_LEVEL( "Symbol is non-terminal: '" + symbolString + "'" );
             GrammarSymbols::NT nonTerminalSymbol = static_cast< NT >( symbol );
-            
+
             // If not allowed leftover tokens AND this is the last symbol in the rule,
             // disallow leftover tokens on the generated AST
             bool callWithAllowLeftoverTokens{ true };

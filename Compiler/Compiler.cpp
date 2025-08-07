@@ -117,7 +117,7 @@ main(
             {
                 throw std::invalid_argument( "No value given for log level argument." );
             }
-            
+
             try
             {
                 int logLevelInt = std::stoi( logLevelStr );

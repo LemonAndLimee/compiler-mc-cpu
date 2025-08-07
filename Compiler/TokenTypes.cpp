@@ -4,6 +4,8 @@
 
 #include "TokenTypes.h"
 
+#include <stdexcept>
+
 /**
  * Converts token type into human-readable string form.
  *

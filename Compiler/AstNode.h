@@ -36,7 +36,7 @@ public:
 
     static AstNode::Ptr GetNodeFromRuleElements( const Elements& elements,
                                                  GrammarSymbols::NT nodeNt );
-    
+
     bool IsStorageInUse();
     bool IsStoringToken();
 

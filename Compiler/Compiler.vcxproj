@@ -137,14 +137,24 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AstGenerator.cpp" />
+    <ClCompile Include="AstNode.cpp" />
     <ClCompile Include="Compiler.cpp" />
+    <ClCompile Include="FileIO.cpp" />
+    <ClCompile Include="Grammar.cpp" />
+    <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="SymbolTable.cpp" />
     <ClCompile Include="Token.cpp" />
     <ClCompile Include="Tokeniser.cpp" />
+    <ClCompile Include="TokenTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AstGenerator.h" />
     <ClInclude Include="AstNode.h" />
+    <ClInclude Include="FileIO.h" />
     <ClInclude Include="Grammar.h" />
+    <ClInclude Include="Logger.h" />
+    <ClInclude Include="SymbolTable.h" />
+    <ClInclude Include="SymbolTableEntry.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Tokeniser.h" />
     <ClInclude Include="TokenTypes.h" />

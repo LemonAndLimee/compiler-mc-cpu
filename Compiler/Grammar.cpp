@@ -5,7 +5,9 @@
 #include "Grammar.h"
 #include "Logger.h"
 #include "TokenTypes.h"
+
 #include <string>
+#include <stdexcept>
 
 /**
  * Determines whether symbol is terminal or non-terminal.
@@ -79,8 +81,8 @@ GrammarRules::ConvertRuleToString(
     for ( size_t i = 0; i < rule.size(); ++i )
     {
         ruleString += GrammarSymbols::ConvertSymbolToString( rule[i] ) + " ";
-    } 
+    }
     ruleString.pop_back();
-    
+
     return ruleString;
 }
