@@ -38,6 +38,7 @@ RunCompiler(
         LOG_ERROR( "Caught exception while converting file to tokens: " + std::string( e.what() ) );
         return false;
     }
+    LOG_INFO( "Successfully converted into tokens!" );
 
     AstNode::Ptr abstractSyntaxTree;
     try
@@ -58,10 +59,28 @@ RunCompiler(
         LOG_ERROR( "Caught exception while generating abstract syntax tree: " + std::string( e.what() ) );
         return false;
     }
+    LOG_INFO( "Successfully created abstract syntax tree!" );
 
     // TODO: Generate assembly code here...
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );
     return false;
+}
+
+/**
+ * \brief  Prints help message to console.
+ */
+void
+PrintHelpMessage()
+{
+    std::string helpMsg = "Command line arguments:\n";
+    helpMsg += "-h (--help)\tPrints this message.\n";
+    helpMsg += "-i (--input)\tPath to input file containing code to be compiled.\n";
+    helpMsg += "-o (--output)\tPath to output file containing generated assembly language."
+               " If left blank will default to ./output.txt\n";
+    helpMsg += "-l (--logLevel)\tLogging level:\n"
+               "\t\t- 0: NONE\n\t\t- 1: ERROR\n\t\t- 2: WARN\n\t\t- 3: INFO\n\t\t"
+               "- 4: INFO_MEDIUM_LEVEL\n\t\t- 5: INFO_LOW_LEVEL\n";
+    std::cout << helpMsg;
 }
 
 int
@@ -81,22 +100,17 @@ main(
         if ( "--help" == currentArg || "-h" == currentArg )
         {
             helpCalled = true;
-            std::string helpMsg = "Command line arguments:\n";
-            helpMsg += "-h (--help)\tPrints this message.\n";
-            helpMsg += "-i (--input)\tPath to input file containing code to be compiled.\n";
-            helpMsg += "-o (--output)\tPath to output file containing generated assembly language."
-                       " If left blank will default to ./output.txt\n";
-            helpMsg += "-l (--logLevel)\tLogging level:\n"
-                       "\t\t- 0: NONE\n\t\t- 1: ERROR\n\t\t- 2: WARN\n\t\t- 3: INFO\n\t\t"
-                       "-4: INFO_MEDIUM_LEVEL\n\t\t- 4: INFO_LOW_LEVEL\n";
-            std::cout << helpMsg;
+            PrintHelpMessage();
         }
         else if ( "--input" == currentArg || "-i" == currentArg )
         {
             ++index;
             if ( argc <= index )
             {
-                throw std::invalid_argument( "No value given for input file argument." );
+                std::string errMsg = "No value given for input file argument.";
+                std::cout << errMsg << "\n\n";
+                PrintHelpMessage();
+                return -1;
             }
             inputFile = argv[index];
         }
@@ -106,7 +120,10 @@ main(
             outputFile = argv[index];
             if ( argc <= index )
             {
-                throw std::invalid_argument( "No value given for output file argument." );
+                std::string errMsg = "No value given for output file argument.";
+                std::cout << errMsg << "\n\n";
+                PrintHelpMessage();
+                return -1;
             }
         }
         else if ( "--logLevel" == currentArg || "-l" == currentArg )
@@ -115,7 +132,10 @@ main(
             std::string logLevelStr = argv[index];
             if ( argc <= index )
             {
-                throw std::invalid_argument( "No value given for log level argument." );
+                std::string errMsg = "No value given for log level argument.";
+                std::cout << errMsg << "\n\n";
+                PrintHelpMessage();
+                return -1;
             }
 
             try
@@ -142,7 +162,10 @@ main(
                 }
                 else
                 {
-                    throw std::invalid_argument( "Log level argument '" + logLevelStr + "' not recognised." );
+                    std::string errMsg = "Log level argument '" + logLevelStr + "' not recognised.";
+                    std::cout << errMsg << "\n\n";
+                    PrintHelpMessage();
+                    return -1;
                 }
             }
         }
@@ -154,7 +177,10 @@ main(
     {
         if ( inputFile.empty() )
         {
-            throw std::invalid_argument( "No input file argument provided." );
+            std::string errMsg = "No input file argument provided.";
+            std::cout << errMsg << "\n\n";
+            PrintHelpMessage();
+            return -1;
         }
         if ( outputFile.empty() )
         {
@@ -166,10 +192,12 @@ main(
         {
             LOG_ERROR( "RunCompiler() returned false: exception raised during runtime." );
             std::cout << "Compilation failed. See log for more details.\n";
+            return -1;
         }
         else
         {
             std::cout << "Compilation successful!\n";
+            return 0;
         }
     }
 }
