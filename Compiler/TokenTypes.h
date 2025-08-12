@@ -9,7 +9,6 @@
 
 #include "TokenValue.h"
 #include "Logger.h"
-#include "Grammar.h"
 
 namespace TokenTypes
 {

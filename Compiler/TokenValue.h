@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+#include "Grammar.h"
+
 // Max length that a string value held by the token can be.
 constexpr size_t g_tokenStrValueMaxLen{ 32u };
 
@@ -19,7 +21,7 @@ enum TokenValueType // The type of value being stored
 
 enum DataType // Supported data types
 {
-    DT_BYTE
+    DT_BYTE = GrammarSymbols::T::BYTE
 };
 
 /**

@@ -66,3 +66,14 @@ SymbolTable::AddEntry(
 
     m_table.insert( { identifier, entry } );
 }
+
+/**
+ * \brief  Gets current number of entries in table.
+ *
+ * \return  Number of table entries currently stored.
+ */
+size_t
+SymbolTable::GetNumEntries()
+{
+    return m_table.size();
+}

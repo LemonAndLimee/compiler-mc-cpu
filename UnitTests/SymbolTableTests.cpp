@@ -107,4 +107,31 @@ BOOST_AUTO_TEST_CASE( GetEntry_NoMatch )
     BOOST_CHECK_EQUAL( nullptr, foundEntry );
 }
 
+/**
+ * Tests that GetNumEntries will return zero if the table contains no entries.
+ */
+BOOST_AUTO_TEST_CASE( GetNumEntries_Zero )
+{
+
+    SymbolTable_Test::Ptr currentTable = std::make_shared< SymbolTable_Test >( nullptr );
+    BOOST_CHECK_EQUAL( 0u, currentTable->GetNumEntries() );
+}
+
+/**
+ * Tests that GetNumEntries will return the correct non-zero number of table entries.
+ */
+BOOST_AUTO_TEST_CASE( GetNumEntries_NonZero )
+{
+    SymbolTableEntry::Ptr entry1 = std::make_shared< SymbolTableEntry >();
+    SymbolTableEntry::Ptr entry2 = std::make_shared< SymbolTableEntry >();
+
+    SymbolTable_Test::Ptr currentTable = std::make_shared< SymbolTable_Test >( nullptr );
+    currentTable->AddEntry( "idName1", entry1 );
+    currentTable->AddEntry( "idName2", entry2 );
+
+    constexpr size_t expectedSize{ 2u };
+    BOOST_CHECK_EQUAL( expectedSize, currentTable->m_table.size() );
+    BOOST_CHECK_EQUAL( expectedSize, currentTable->GetNumEntries() );
+}
+
 BOOST_AUTO_TEST_SUITE_END() // SymbolTableTests

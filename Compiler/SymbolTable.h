@@ -24,6 +24,8 @@ public:
 
     void AddEntry( const std::string& identifier, SymbolTableEntry::Ptr entry );
 
+    size_t GetNumEntries();
+
 protected:
     // The table itself. Maps string identifiers to structs containing associated information.
     std::unordered_map< std::string, SymbolTableEntry::Ptr > m_table;

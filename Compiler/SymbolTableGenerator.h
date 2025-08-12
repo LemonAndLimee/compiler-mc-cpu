@@ -12,6 +12,7 @@ class SymbolTableGenerator
 {
 public:
     using UPtr = std::unique_ptr< SymbolTableGenerator >;
+    using Ptr = std::shared_ptr< SymbolTableGenerator >;
 
     SymbolTableGenerator() = default;
 

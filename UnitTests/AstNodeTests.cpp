@@ -11,7 +11,7 @@ public:
     /**
      * \brief  Creates fake AST node with an arbitrary terminal node label, and no children, to be used in test
      *         cases.
-     * 
+     *
      * \return  Created AST node.
      */
     AstNode::Ptr
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_SingleTerminalNodeLabel )
         skipToken,
         regularToken
     };
-    
+
     GrammarSymbols::NT nonTerminalArg { Block };
     AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_TwoNodeLabelTypes_Throws )
         regularToken,
         nodeLabelToken2
     };
-    
+
     GrammarSymbols::NT nonTerminalArg { Block };
     BOOST_CHECK_THROW( AstNode::GetNodeFromRuleElements( elements, nonTerminalArg ), std::runtime_error );
 }
@@ -221,7 +221,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
         skipToken,
         regularToken
     };
-    
+
     GrammarSymbols::NT nonTerminalArg { Block };
     AstNode::Ptr returnedNode = AstNode::GetNodeFromRuleElements( elements, nonTerminalArg );
     BOOST_REQUIRE( nullptr != returnedNode );
