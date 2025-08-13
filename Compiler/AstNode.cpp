@@ -31,8 +31,7 @@ AstNode::GetNodeFromRuleElements(
 
     if ( elements.empty() )
     {
-        LOG_ERROR( "Tried to create node from zero elements." );
-        throw std::runtime_error( "Tried to create node from zero elements." );
+        LOG_ERROR_AND_THROW( "Tried to create node from zero elements.", std::runtime_error );
     }
 
     // Set to valid value if a terminal symbol label is found - if still invalid after all elements have been
@@ -60,8 +59,7 @@ AstNode::GetNodeFromRuleElements(
                     errMsg += ": gathered elements have more than one node label type: ";
                     errMsg += TokenTypes::ConvertTokenTypeToString( static_cast< TokenType >( nodeLabel ) ) + ", ";
                     errMsg += TokenTypes::ConvertTokenTypeToString( tokenType );
-                    LOG_ERROR( errMsg );
-                    throw std::runtime_error( "Creating node: elements have more than one node label type." );
+                    LOG_ERROR_AND_THROW( errMsg, std::runtime_error );
                 }
                 LOG_INFO_LOW_LEVEL( "Found terminal node label: " + TokenTypes::ConvertTokenTypeToString( tokenType ) );
                 nodeLabel = tokenType;
@@ -94,8 +92,8 @@ AstNode::GetNodeFromRuleElements(
         // If no node label found AND children empty, this means all elements were skipped
         if ( nodeChildren.empty() )
         {
-            LOG_ERROR( "All node elements skipped: cannot create a node with no elements." );
-            throw std::runtime_error( "All node elements skipped: cannot create a node with no elements." );
+            LOG_ERROR_AND_THROW( "All node elements skipped: cannot create a node with no elements.",
+                                 std::runtime_error );
         }
         // If no node label found AND only one child, this means the only significant element/s
         // was an AST node. In this case, we can return that node instead

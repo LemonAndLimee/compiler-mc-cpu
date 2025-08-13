@@ -37,8 +37,6 @@ TokenTypes::ConvertTokenTypeToString (
     case INVALID_TOKEN:
         return "invalid";
     default:
-        std::string errMsg = "Unknown token type " + std::to_string( type );
-        LOG_ERROR( errMsg );
-        throw std::invalid_argument( errMsg );
+        LOG_ERROR_AND_THROW( "Unknown token type " + std::to_string( type ), std::invalid_argument );
     }
 }

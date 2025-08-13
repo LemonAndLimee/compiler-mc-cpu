@@ -49,19 +49,15 @@ SymbolTable::AddEntry(
 {
     if ( nullptr == entry )
     {
-        std::string errMsg = "Could not add symbol table entry for '" + identifier
-                             + "': given a nullptr entry struct.";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Could not add symbol table entry for '" + identifier + "': given a nullptr entry struct.",
+                             std::runtime_error );
     }
 
     // If table already contains this entry, throw error
     if ( 0u < m_table.count( identifier ) )
     {
-        std::string errMsg = "Could not add symbol table entry for '" + identifier
-                             + "': entry already exists";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Could not add symbol table entry for '" + identifier + "': entry already exists",
+                             std::runtime_error );
     }
 
     m_table.insert( { identifier, entry } );

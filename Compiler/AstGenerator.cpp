@@ -42,9 +42,7 @@ AstGenerator::GenerateAst(
 
     if ( 0u == g_nonTerminalRuleSets.count( startingNt ) )
     {
-        std::string errMsg = "Starting symbol " + startingNtString + " has no associated rules.";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Starting symbol " + startingNtString + " has no associated rules.", std::runtime_error );
     }
 
     // Try each rule belonging to the starting NT symbol
@@ -82,9 +80,8 @@ AstGenerator::GenerateAst(
 
         if ( elements.empty() )
         {
-            std::string errMsg = "Rule match found for '" + ruleString + "' but no child nodes or tokens created.";
-            LOG_ERROR( errMsg );
-            throw std::runtime_error( errMsg );
+            LOG_ERROR_AND_THROW( "Rule match found for '" + ruleString + "' but no child nodes or tokens created.",
+                                 std::runtime_error );
         }
 
         // Swap out original tokens collection so it has all the correct tokens popped off the front
@@ -236,8 +233,7 @@ AstGenerator::TryRule(
         // If symbol type not recognised
         else
         {
-            LOG_ERROR( "Symbol doesn't belong to T or NT sets." );
-            throw std::runtime_error( "Symbol doesn't belong to T or NT sets." );
+            LOG_ERROR_AND_THROW( "Symbol doesn't belong to T or NT sets.", std::runtime_error );
         }
     }
 

@@ -32,9 +32,8 @@ GrammarSymbols::GetSymbolType(
     }
     else
     {
-        std::string errMsg = "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( maskedSymbolType );
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Unknown symbol (" + std::to_string( symbol ) + ") type: "
+                             + std::to_string( maskedSymbolType ), std::runtime_error );
     }
 }
 
@@ -59,10 +58,8 @@ GrammarSymbols::ConvertSymbolToString(
     }
     else
     {
-        std::string errMsg = "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( symbolType );
-        errMsg += " returned by GetSymbolType()";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( symbolType )
+                             + " returned by GetSymbolType()", std::runtime_error );
     }
 }
 

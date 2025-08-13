@@ -31,6 +31,7 @@ public:
     ~Logger() = default;
 
     void LogMessage( LogLevel logLevel, const std::string message, const char* codeFile, const char* codeFunc, int lineNum );
+
     #define LOG( logLevel, message ) Logger::GetInstance()->LogMessage( logLevel, message, __FILE__, __FUNCTION__, __LINE__ )
     #define LOG_ERROR( message ) LOG( LogLevel::ERROR, message )
     #define LOG_WARN( message ) LOG( LogLevel::WARN, message )
@@ -38,7 +39,21 @@ public:
     #define LOG_INFO_MEDIUM_LEVEL( message ) LOG( LogLevel::INFO_MEDIUM_LEVEL, message )
     #define LOG_INFO_LOW_LEVEL( message ) LOG( LogLevel::INFO_LOW_LEVEL, message )
 
-    // TODO: make a method for logging and throwing an error, to avoid having to reuse the same string twice
+    template< class E >
+    void LogAndThrow(
+        LogLevel logLevel,
+        const std::string message,
+        const char* codeFile,
+        const char* codeFunc,
+        int lineNum )
+    {
+        static_assert( std::is_base_of<std::exception, E>{} );
+        LogMessage( logLevel, message, codeFile, codeFunc, lineNum );
+        throw E( message );
+    }
+
+    #define LOG_AND_THROW( logLevel, message, eType ) Logger::GetInstance()->LogAndThrow<eType>( logLevel, message, __FILE__, __FUNCTION__, __LINE__ )
+    #define LOG_ERROR_AND_THROW( message, eType ) LOG_AND_THROW( LogLevel::ERROR, message, eType)
 
     void SetLogLevel( LogLevel level );
 

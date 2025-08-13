@@ -21,9 +21,7 @@ FileIO::ReadFileToString(
     std::ifstream file( filePath );
     if ( !file.is_open() )
     {
-        std::string errMsg = "Failed to open file " + filePath;
-        LOG_ERROR( errMsg );
-        throw std::invalid_argument( errMsg );
+        LOG_ERROR_AND_THROW( "Failed to open file " + filePath, std::invalid_argument );
     }
 
     std::string fileString;

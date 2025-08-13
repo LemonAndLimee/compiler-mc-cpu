@@ -84,7 +84,8 @@ RunCompiler(
     }
     LOG_INFO( "Successfully created symbol table!" );
 
-    // TODO: define custom exception types, e.g. syntax error, to specify whether error is internal or from incorrect input
+    // TODO: consider defining custom exception types, e.g. syntax error, to specify whether error is internal or from
+    // incorrect input. Consider how better to display non-internal errors, e.g. to the terminal as well as the logs.
 
     // TODO: Generate assembly code here...
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );

@@ -6,6 +6,7 @@
 #include "FileIO.h"
 #include <ctime>
 #include <filesystem>
+#include <type_traits>
 
 Logger::Logger( LogLevel logLevel )
 : m_logLevel( logLevel )

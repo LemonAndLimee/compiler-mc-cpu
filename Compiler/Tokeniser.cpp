@@ -77,8 +77,8 @@ Tokeniser::ConvertSingleLineAndAppend(
     {
         if ( !IsWhitespace( inputString[index] ) )
         {
-            LOG_ERROR( "Non-matching characters left at end of line '" + inputString + "'." );
-            throw std::invalid_argument( "Non-whitespace characters leftover at the end of line." );
+            LOG_ERROR_AND_THROW( "Non-matching characters left at end of line '" + inputString + "'.",
+                                 std::invalid_argument );
         }
     }
 }
@@ -295,14 +295,12 @@ Tokeniser::CreateTokenFromString(
             }
             else
             {
-                LOG_ERROR( "Unknown data type " + tokenString );
-                throw std::runtime_error( "Unknown data type " + tokenString );
+                LOG_ERROR_AND_THROW( "Unknown data type " + tokenString, std::runtime_error );
             }
         }
         else
         {
-            LOG_ERROR( "Unknown token value type " + tokenString );
-            throw std::runtime_error( "Unknown token value type " + tokenString );
+            LOG_ERROR_AND_THROW( "Unknown token value type " + tokenString, std::runtime_error );
         }
     }
     else

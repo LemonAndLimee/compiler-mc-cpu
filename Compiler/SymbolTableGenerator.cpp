@@ -18,16 +18,12 @@ SymbolTableGenerator::GenerateSymbolTableForAst(
 {
     if ( nullptr == treeRootNode )
     {
-        std::string errMsg = "Generate symbol table called with nullptr AST node.";
-        LOG_ERROR( errMsg );
-        throw std::invalid_argument( errMsg );
+        LOG_ERROR_AND_THROW( "Generate symbol table called with nullptr AST node.", std::invalid_argument );
     }
 
     if ( nullptr != treeRootNode->m_symbolTable )
     {
-        std::string errMsg = "Cannot generate symbol table: node already has an existing table.";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Cannot generate symbol table: node already has an existing table.", std::runtime_error );
     }
 
     CreateTableForAstFromParent( nullptr, treeRootNode );
@@ -70,9 +66,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
     {
         // Expect that this method will only be called on scope nodes, so it should contain a valid storage of
         // child nodes.
-        std::string errMsg = "Unexpected lack of children for a scope-defining AST node.";
-        LOG_ERROR( errMsg );
-        throw std::runtime_error( errMsg );
+        LOG_ERROR_AND_THROW( "Unexpected lack of children for a scope-defining AST node.", std::runtime_error );
     }
     AstNode::Children children = std::get< AstNode::Children >( parentNode->m_storage );
 
@@ -100,9 +94,8 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                         // an entry.
                         if ( nullptr == entry )
                         {
-                            std::string errMsg = "Trying to write to undeclared identifier: '" + identifier + "'";
-                            LOG_ERROR( errMsg );
-                            throw std::runtime_error( errMsg );
+                            LOG_ERROR_AND_THROW( "Trying to write to undeclared identifier: '" + identifier + "'",
+                                                 std::runtime_error );
                         }
 
                         entry->isWrittenTo = true;
@@ -115,9 +108,8 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                         // Read operation expects an entry to exist
                         if ( nullptr == entry )
                         {
-                            std::string errMsg = "Trying to read from undeclared identifier: '" + identifier + "'";
-                            LOG_ERROR( errMsg );
-                            throw std::runtime_error( errMsg );
+                            LOG_ERROR_AND_THROW( "Trying to read from undeclared identifier: '" + identifier + "'",
+                                                 std::runtime_error );
                         }
 
                         entry->isReadFrom = true;
@@ -132,10 +124,8 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                 // Get rightmost child to get identifier node. With two children this should be 2.
                 if ( 2u != variableChildren.size() )
                 {
-                    std::string errMsg = "Encountered 'variable' rule node with unexpected number of children: "
-                                         + std::to_string( variableChildren.size() );
-                    LOG_ERROR( errMsg );
-                    throw std::runtime_error( errMsg );
+                    LOG_ERROR_AND_THROW( "Encountered 'variable' rule node with unexpected number of children: "
+                                         + std::to_string( variableChildren.size() ), std::runtime_error );
                 }
                 AstNode::Ptr idNode = variableChildren[1];
                 std::string identifier = std::get< Token::Ptr>( idNode->m_storage )->m_value->m_value.stringValue;
@@ -144,9 +134,8 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                 SymbolTableEntry::Ptr entry = table->GetEntryIfExists( identifier );
                 if ( nullptr != entry )
                 {
-                    std::string errMsg = "Trying to re-declare existing variable: '" + identifier + "'";
-                    LOG_ERROR( errMsg );
-                    throw std::runtime_error( errMsg );
+                    LOG_ERROR_AND_THROW( "Trying to re-declare existing variable: '" + identifier + "'",
+                                         std::runtime_error );
                 }
 
                 // Create new entry and add to table
@@ -174,9 +163,8 @@ SymbolTableGenerator::PopulateTableFromSubTree(
         }
         else
         {
-            std::string errMsg = "Trying to populate symbol table: AST node not storing any value.";
-            LOG_ERROR( errMsg );
-            throw std::runtime_error( errMsg );
+            LOG_ERROR_AND_THROW( "Trying to populate symbol table: AST node not storing any value.",
+                                 std::runtime_error );
         }
     }
 }
