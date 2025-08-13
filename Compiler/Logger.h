@@ -38,6 +38,8 @@ public:
     #define LOG_INFO_MEDIUM_LEVEL( message ) LOG( LogLevel::INFO_MEDIUM_LEVEL, message )
     #define LOG_INFO_LOW_LEVEL( message ) LOG( LogLevel::INFO_LOW_LEVEL, message )
 
+    // TODO: make a method for logging and throwing an error, to avoid having to reuse the same string twice
+
     void SetLogLevel( LogLevel level );
 
 private:

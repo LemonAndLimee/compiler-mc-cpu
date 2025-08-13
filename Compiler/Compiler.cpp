@@ -4,6 +4,7 @@
 #include "FileIO.h"
 #include "AstGenerator.h"
 #include "Logger.h"
+#include "SymbolTableGenerator.h"
 
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
@@ -60,6 +61,30 @@ RunCompiler(
         return false;
     }
     LOG_INFO( "Successfully created abstract syntax tree!" );
+
+    SymbolTable::Ptr symbolTable;
+    try
+    {
+        LOG_INFO( "Generating symbol table from abstract syntax tree..." );
+        SymbolTableGenerator::UPtr symbolTableGenerator = std::make_unique< SymbolTableGenerator >();
+        symbolTableGenerator->GenerateSymbolTableForAst( abstractSyntaxTree );
+
+        symbolTable = abstractSyntaxTree->m_symbolTable;
+
+        if ( nullptr == symbolTable )
+        {
+            LOG_ERROR( "Failed to generate symbol table: no table assigned to tree node." );
+            return false;
+        }
+    }
+    catch ( std::exception& e )
+    {
+        LOG_ERROR( "Caught exception while creating symbol table: " + std::string( e.what() ) );
+        return false;
+    }
+    LOG_INFO( "Successfully created symbol table!" );
+
+    // TODO: define custom exception types, e.g. syntax error, to specify whether error is internal or from incorrect input
 
     // TODO: Generate assembly code here...
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );

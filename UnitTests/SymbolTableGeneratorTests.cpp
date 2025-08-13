@@ -186,18 +186,36 @@ BOOST_AUTO_TEST_SUITE( SingleScopeTests )
  */
 BOOST_AUTO_TEST_CASE( AstHasNoSymbols )
 {
-    // Fake child nodes of the AST. Use nullptr tokens as the generator method should only check node types.
+    // Fake child nodes of the AST. Use fake tokens as the generator method should only check node types.
     // With this in mind, we can also fake NT subtree nodes by using the "Token" constructor, for convenience.
+
+    Token::Ptr fakeToken = std::make_shared< Token >( TokenType::INVALID_TOKEN );
+
     AstNode::Ptr scopeNode = CreateScopedNodeFromChildren(
         {
-            std::make_shared< AstNode >( T::BYTE, nullptr ),
-            std::make_shared< AstNode >( T::AND, nullptr ),
-            std::make_shared< AstNode >( NT::For_init, nullptr )
+            std::make_shared< AstNode >( T::BYTE, fakeToken ),
+            std::make_shared< AstNode >( T::AND, fakeToken ),
+            std::make_shared< AstNode >( NT::For_init, fakeToken )
         }
     );
 
     constexpr size_t expectedNumEntries{ 0u };
     SymbolTable::Ptr table = GenerateTableAndValidate( scopeNode, expectedNumEntries );
+}
+
+/**
+ * Tests that if a call is made to generate a symbol table for an AST that contains a read from a symbol that has no
+ * entry, a.k.a has not been declared, an error is raised.
+ */
+BOOST_AUTO_TEST_CASE( UndeclaredIdentifier )
+{
+    // Create assignment statement that reads from undeclared variable.
+    std::string varName1 = "foo";
+    std::string varName2 = "bar";
+    constexpr bool isNewVariable{ true };
+    AstNode::Ptr assignNode = CreateAssignNodeFromVar( varName2, isNewVariable, varName1 );
+
+    BOOST_CHECK_THROW( m_generator->GenerateSymbolTableForAst( assignNode ), std::runtime_error );
 }
 
 /**
@@ -334,8 +352,11 @@ BOOST_AUTO_TEST_SUITE( MultiScopeTests )
  */
 BOOST_AUTO_TEST_CASE( NestedScopeCreatesNewTable )
 {
-    // Create empty child scope node to test a new table is created.
-    AstNode::Ptr childScope = std::make_shared< AstNode >( NT::Scoped_block, nullptr );
+    // Create dummy child scope node to test a new table is created.
+    Token::Ptr fakeToken = std::make_shared< Token >( TokenType::INVALID_TOKEN );
+    AstNode::Ptr fakeNode = std::make_shared< AstNode >( TokenType::INVALID_TOKEN, fakeToken );
+
+    AstNode::Ptr childScope = CreateScopedNodeFromChildren( { fakeNode } );
     AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { childScope } );
 
     constexpr size_t expectedNumEntries{ 0u };
@@ -452,7 +473,8 @@ BOOST_AUTO_TEST_CASE( GrandchildNestedScope )
     AstNode::Ptr childScope = CreateScopedNodeFromChildren( { grandchildScope } );
     AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { declarationNode, childScope } );
 
-    constexpr size_t expectedNumParentEntries{ 0u };
+    // Expect the entry to belong to the parent table as it was declared in that scope.
+    constexpr size_t expectedNumParentEntries{ 1u };
     SymbolTable::Ptr parentTable = GenerateTableAndValidate( parentScope, expectedNumParentEntries );
 
     // Validate parent table

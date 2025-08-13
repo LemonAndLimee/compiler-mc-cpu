@@ -17,4 +17,9 @@ public:
     SymbolTableGenerator() = default;
 
     void GenerateSymbolTableForAst( AstNode::Ptr treeRootNode );
+
+private:
+    void CreateTableForAstFromParent( SymbolTable::Ptr parentTable, AstNode::Ptr treeRootNode );
+
+    void PopulateTableFromSubTree( SymbolTable::Ptr table, AstNode::Ptr parentNode );
 };

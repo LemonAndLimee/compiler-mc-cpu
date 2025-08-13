@@ -3,17 +3,180 @@
  */
 
 #include "SymbolTableGenerator.h"
+#include <stdexcept>
 
- /**
-  * \brief  Creates symbol table to store information about all symbols within this scope of this AST, and stores it
-  *         inside the root tree node. Recursively adds symbol tables for any scope-defining subtrees.
-  *
-  * \param[in]  treeRootNode  The root node of the AST defining the scope of the symbol table.
-  */
+/**
+ * \brief  Creates symbol table to store information about all symbols within this scope of this AST, and stores it
+ *         inside the root tree node. Recursively adds symbol tables for any scope-defining subtrees.
+ *
+ * \param[in]  treeRootNode  The root node of the AST defining the scope of the symbol table.
+ */
 void
 SymbolTableGenerator::GenerateSymbolTableForAst(
     AstNode::Ptr treeRootNode
 )
 {
+    if ( nullptr == treeRootNode )
+    {
+        std::string errMsg = "Generate symbol table called with nullptr AST node.";
+        LOG_ERROR( errMsg );
+        throw std::invalid_argument( errMsg );
+    }
 
+    if ( nullptr != treeRootNode->m_symbolTable )
+    {
+        std::string errMsg = "Cannot generate symbol table: node already has an existing table.";
+        LOG_ERROR( errMsg );
+        throw std::runtime_error( errMsg );
+    }
+
+    CreateTableForAstFromParent( nullptr, treeRootNode );
+}
+
+/**
+ * \brief  Internal method for creating a symbol table for a given AST node, from a given parent table.
+ *
+ * \param[in]  parentTable   The parent symbol table to this one. Nullptr if is the root table.
+ * \param[in]  treeRootNode  The root node of the AST defining the scope of the symbol table.
+ */
+void
+SymbolTableGenerator::CreateTableForAstFromParent(
+    SymbolTable::Ptr parentTable,
+    AstNode::Ptr treeRootNode
+)
+{
+    SymbolTable::Ptr symbolTable = std::make_shared< SymbolTable >( parentTable );
+    treeRootNode->m_symbolTable = symbolTable;
+
+    PopulateTableFromSubTree( symbolTable, treeRootNode );
+}
+
+/**
+ * \brief  Considers each child node and populates the table with any symbols it finds. If subtrees are found, it
+ *         either creates a new symbol table, or recursively calls to continue traversing the nodes in this scope.
+ *
+ * \param[in]  table       The symbol table of the current scope, to populate with entries.
+ * \param[in]  parentNode  Parent of child nodes to check. Pass this instead of children so we can check the operation
+ *                         e.g. if it is an assignment.
+ */
+void
+SymbolTableGenerator::PopulateTableFromSubTree(
+    SymbolTable::Ptr table,
+    AstNode::Ptr parentNode
+)
+{
+    // If node is holding child nodes and not a token, throw error
+    if ( parentNode->IsStoringToken() && parentNode->IsStorageInUse() )
+    {
+        // Expect that this method will only be called on scope nodes, so it should contain a valid storage of
+        // child nodes.
+        std::string errMsg = "Unexpected lack of children for a scope-defining AST node.";
+        LOG_ERROR( errMsg );
+        throw std::runtime_error( errMsg );
+    }
+    AstNode::Children children = std::get< AstNode::Children >( parentNode->m_storage );
+
+    // If child is an identifier, locate existing entry or create new one
+    // If child is a scope node, generate new table for this child
+    // Else if child is not a scope-definer but has children of its own, repeat the same process for its children
+    for ( size_t i = 0; i < children.size(); i++ )
+    {
+        auto child = children[i];
+
+        if ( child->IsStorageInUse() )
+        {
+            // TODO: break this logic down into separate methods
+            // If child holds a token
+            if ( child->IsStoringToken() )
+            {
+                if ( TokenType::IDENTIFIER == child->m_nodeLabel )
+                {
+                    std::string identifier = std::get< Token::Ptr>( child->m_storage )->m_value->m_value.stringValue;
+                    SymbolTableEntry::Ptr entry = table->GetEntryIfExists( identifier );
+                    // If on left side of assignment, it's a write operation
+                    if ( TokenType::ASSIGN == parentNode->m_nodeLabel && 0u == i )
+                    {
+                        // Because this is an identifier and not a (data type + identifier), we expect there to already
+                        // an entry.
+                        if ( nullptr == entry )
+                        {
+                            std::string errMsg = "Trying to write to undeclared identifier: '" + identifier + "'";
+                            LOG_ERROR( errMsg );
+                            throw std::runtime_error( errMsg );
+                        }
+
+                        entry->isWrittenTo = true;
+                        // TODO: check data type matches the value being assigned. Lower priority since only have one
+                        // data type for now.
+                    }
+                    // Else it's a read operation
+                    else
+                    {
+                        // Read operation expects an entry to exist
+                        if ( nullptr == entry )
+                        {
+                            std::string errMsg = "Trying to read from undeclared identifier: '" + identifier + "'";
+                            LOG_ERROR( errMsg );
+                            throw std::runtime_error( errMsg );
+                        }
+
+                        entry->isReadFrom = true;
+                    }
+                }
+                // Ignore any other token types
+            }
+            // Else if child is holding a "variable" rule (it still represents a single identifier)
+            else if ( NT::Variable == child->m_nodeLabel )
+            {
+                AstNode::Children variableChildren = std::get< AstNode::Children >( child->m_storage );
+                // Get rightmost child to get identifier node. With two children this should be 2.
+                if ( 2u != variableChildren.size() )
+                {
+                    std::string errMsg = "Encountered 'variable' rule node with unexpected number of children: "
+                                         + std::to_string( variableChildren.size() );
+                    LOG_ERROR( errMsg );
+                    throw std::runtime_error( errMsg );
+                }
+                AstNode::Ptr idNode = variableChildren[1];
+                std::string identifier = std::get< Token::Ptr>( idNode->m_storage )->m_value->m_value.stringValue;
+
+                // Expect no existing entry as it is being declared
+                SymbolTableEntry::Ptr entry = table->GetEntryIfExists( identifier );
+                if ( nullptr != entry )
+                {
+                    std::string errMsg = "Trying to re-declare existing variable: '" + identifier + "'";
+                    LOG_ERROR( errMsg );
+                    throw std::runtime_error( errMsg );
+                }
+
+                // Create new entry and add to table
+                AstNode::Ptr dataTypeNode = variableChildren[0];
+                DataType dataType = std::get< Token::Ptr>( dataTypeNode->m_storage )->m_value->m_value.dataTypeValue;
+
+                entry = std::make_shared< SymbolTableEntry >();
+                entry->dataType = dataType;
+                table->AddEntry( identifier, entry );
+            }
+            // If child represents sub-tree
+            else
+            {
+                // If scope-defining sub-tree, create new table
+                if ( child->IsScopeDefiningNode() )
+                {
+                    CreateTableForAstFromParent( table, child );
+                }
+                // Else continue populating in this scope
+                else
+                {
+                    PopulateTableFromSubTree( table, child );
+                }
+            }
+        }
+        else
+        {
+            std::string errMsg = "Trying to populate symbol table: AST node not storing any value.";
+            LOG_ERROR( errMsg );
+            throw std::runtime_error( errMsg );
+        }
+    }
 }
