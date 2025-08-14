@@ -6,6 +6,7 @@
 
 #include <string>
 #include <memory>
+#include <iostream>
 
 enum LogLevel
 {
@@ -52,8 +53,18 @@ public:
         throw E( message );
     }
 
+    static void LogAndCout(
+        const std::string message
+    )
+    {
+        LOG_INFO( message );
+        std::cout << message + "\n";
+    }
+
     #define LOG_AND_THROW( logLevel, message, eType ) Logger::GetInstance()->LogAndThrow<eType>( logLevel, message, __FILE__, __FUNCTION__, __LINE__ )
-    #define LOG_ERROR_AND_THROW( message, eType ) LOG_AND_THROW( LogLevel::ERROR, message, eType)
+    #define LOG_ERROR_AND_THROW( message, eType ) LOG_AND_THROW( LogLevel::ERROR, message, eType )
+
+    #define LOG_AND_COUT( message ) Logger::LogAndCout( message )
 
     void SetLogLevel( LogLevel level );
 
