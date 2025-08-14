@@ -63,6 +63,8 @@ Tokeniser::ConvertSingleLineAndAppend(
         LOG_INFO_LOW_LEVEL( "Skipping line as it is empty or commented out." );
         return;
     }
+    // TODO: allow commenting out the later half of a line. This would allow comments to be at the same indentation
+    // level as the code.
 
     size_t currentIndex{ 0u };
     Token::Ptr nextToken;
@@ -72,13 +74,18 @@ Tokeniser::ConvertSingleLineAndAppend(
         tokens.push_back( nextToken );
     }
 
+    if ( 0u == currentIndex )
+    {
+        LOG_ERROR_AND_THROW( "Could not find any tokens in line '" + inputString + "'", std::invalid_argument );
+    }
+
     // Check there are no non-whitespace characters left at the end of the line.
     for ( size_t index = currentIndex; index < inputString.size(); ++index )
     {
         if ( !IsWhitespace( inputString[index] ) )
         {
-            LOG_ERROR_AND_THROW( "Non-matching characters left at end of line '" + inputString + "'.",
-                                 std::invalid_argument );
+            LOG_ERROR_AND_THROW( "Non-matching characters left at end of line '" + inputString + "': leftover '"
+                                 + inputString.substr( index, inputString.size()-index ) + "'", std::invalid_argument );
         }
     }
 }
@@ -239,7 +246,7 @@ Tokeniser::GetTokenType(
         for ( size_t index = 1u; index < tokenString.size(); ++index )
         {
             // If not alphanumeric or _, then it is invalid
-            if ( 0u == std::isalnum( tokenString[index] ) && '_' != tokenString[0] )
+            if ( 0u == std::isalnum( tokenString[index] ) && '_' != tokenString[index] )
             {
                 return TokenType::INVALID_TOKEN;
             }

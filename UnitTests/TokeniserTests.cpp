@@ -83,12 +83,28 @@ BOOST_AUTO_TEST_CASE( ConvertExactMatchSingleToken )
 }
 
 /**
- * Tests that when ConvertStringToTokens() is called on a line made up of a single, pattern-match token, it returns a
- * container containing the expected token.
+ * Tests that when ConvertStringToTokens() is called on a line made up of a single, pattern-match id token, it returns
+ * a container containing the expected token.
  */
 BOOST_AUTO_TEST_CASE( ConvertPatternMatchSingleToken )
 {
-    std::string stringToConvert = "variableName";
+    std::string stringToConvert = "variableName1";
+    TokenType expectedTokenType{ IDENTIFIER };
+
+    Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
+
+    Token::Ptr expectedToken = std::make_shared<Token>( expectedTokenType, std::make_shared<TokenValue>( stringToConvert ) );
+    Tokens expectedTokens{ expectedToken };
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
+}
+
+/**
+ * Tests that ConvertStringToTokens() will successfully convert an identifier with an underscore in the middle of it.
+ */
+BOOST_AUTO_TEST_CASE( ConvertIdentifier_UnderscoreInMiddle )
+{
+    std::string stringToConvert = "variable_Name1";
     TokenType expectedTokenType{ IDENTIFIER };
 
     Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
@@ -130,7 +146,7 @@ BOOST_AUTO_TEST_CASE( ConvertMultipleTokensLine )
 /**
  * Tests that when ConvertStringToTokens() is called on a line that doesn't match any valid tokens, it throws an error.
  */
-BOOST_AUTO_TEST_CASE( NoMatchLine )
+BOOST_AUTO_TEST_CASE( NoMatchLine_NumAtStartOfIdentifier )
 {
     std::string stringToConvert = "1hello"; // Invalid token, as an identifer cannot begin with a number.
 
