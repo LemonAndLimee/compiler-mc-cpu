@@ -8,6 +8,9 @@
 #include <string>
 #include <memory>
 
+// Defines the prefix string that means "everything else on this line is comment"
+const std::string g_commentPrefix = "//";
+
 // Class responsible for converting a string into a stream of tokens.
 class Tokeniser
 {

@@ -99,8 +99,6 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                         }
 
                         entry->isWrittenTo = true;
-                        // TODO: check data type matches the value being assigned. Lower priority since only have one
-                        // data type for now.
                     }
                     // Else it's a read operation
                     else

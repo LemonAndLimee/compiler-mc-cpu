@@ -56,19 +56,31 @@ Tokeniser::ConvertSingleLineAndAppend(
     Tokens& tokens
 )
 {
-    LOG_INFO( "Converting line '" + inputString + "' to tokens." );
-    // If string is empty or commented out, i.e. begins with a //
-    if ( inputString.empty() || 0u == inputString.rfind("//", 0u) )
+    LOG_INFO_MEDIUM_LEVEL( "Converting line '" + inputString + "' to tokens." );
+
+    std::string workingCopy = inputString;
+    // If there is a comment anywhere in the line, remove everything after the comment prefix and create a working
+    // copy.
+    // This needs refactoring if we ever support string literals as this doesn't account for something being within
+    // quotation marks.
+    size_t commentPos = inputString.find( g_commentPrefix, 0u );
+    if ( std::string::npos != commentPos )
+    {
+        // Take a substring ending at the comment
+        workingCopy = inputString.substr( 0, commentPos );
+        LOG_INFO_LOW_LEVEL( "Skipping commented part: working copy is '" + workingCopy + "'" );
+    }
+
+    // If line is now empty
+    if ( workingCopy.empty() )
     {
         LOG_INFO_LOW_LEVEL( "Skipping line as it is empty or commented out." );
         return;
     }
-    // TODO: allow commenting out the later half of a line. This would allow comments to be at the same indentation
-    // level as the code.
 
     size_t currentIndex{ 0u };
     Token::Ptr nextToken;
-    while ( nullptr != ( nextToken = GetNextToken( inputString, currentIndex ) ) )
+    while ( nullptr != ( nextToken = GetNextToken( workingCopy, currentIndex ) ) )
     {
         LOG_INFO_LOW_LEVEL( "Found token " + nextToken->ToString() );
         tokens.push_back( nextToken );
@@ -80,12 +92,12 @@ Tokeniser::ConvertSingleLineAndAppend(
     }
 
     // Check there are no non-whitespace characters left at the end of the line.
-    for ( size_t index = currentIndex; index < inputString.size(); ++index )
+    for ( size_t index = currentIndex; index < workingCopy.size(); ++index )
     {
-        if ( !IsWhitespace( inputString[index] ) )
+        if ( !IsWhitespace( workingCopy[index] ) )
         {
             LOG_ERROR_AND_THROW( "Non-matching characters left at end of line '" + inputString + "': leftover '"
-                                 + inputString.substr( index, inputString.size()-index ) + "'", std::invalid_argument );
+                                 + workingCopy.substr( index, workingCopy.size()-index ) + "'", std::invalid_argument );
         }
     }
 }

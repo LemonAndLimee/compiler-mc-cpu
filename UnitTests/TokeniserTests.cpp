@@ -50,6 +50,20 @@ BOOST_AUTO_TEST_CASE( ConvertCommentLine )
     Tokens emptyTokens{};
     CheckTokensAgainstExpected( emptyTokens, outputTokens );
 }
+/**
+ * Tests that when ConvertStringToTokens() is called on a line made up of whitespace followed by a comment, it returns
+ * an empty collection of tokens.
+ */
+BOOST_AUTO_TEST_CASE( ConvertWhitespacePlusComment )
+{
+    std::string stringToConvert = "    \t\t   // I am a commented out line";
+
+    Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
+
+    Tokens emptyTokens{};
+    CheckTokensAgainstExpected( emptyTokens, outputTokens );
+}
 
 /**
  * Tests that when ConvertStringToTokens() is called on a line made up of only whitespace, it returns an empty
@@ -113,6 +127,29 @@ BOOST_AUTO_TEST_CASE( ConvertIdentifier_UnderscoreInMiddle )
     Token::Ptr expectedToken = std::make_shared<Token>( expectedTokenType, std::make_shared<TokenValue>( stringToConvert ) );
     Tokens expectedTokens{ expectedToken };
     CheckTokensAgainstExpected( expectedTokens, outputTokens );
+}
+
+/**
+ * Tests that ConvertStringToTokens() will successfully convert an token followed by a comment, and will ignore
+ * everything after the comment prefix //.
+ */
+BOOST_AUTO_TEST_CASE( ConvertTokenThenComment )
+{
+    std::string varName = "variable_Name1";
+    std::string stringToConvert = varName + "//for";
+    Tokeniser::Ptr tokeniser = std::make_shared<Tokeniser>();
+    Tokens outputTokens = tokeniser->ConvertStringToTokens( stringToConvert );
+
+    TokenType expectedTokenType{ IDENTIFIER };
+    Token::Ptr expectedToken = std::make_shared<Token>( expectedTokenType, std::make_shared<TokenValue>( varName ));
+    Tokens expectedTokens{ expectedToken };
+    CheckTokensAgainstExpected( expectedTokens, outputTokens );
+
+    std::string stringToConvert2 = varName + " //for";
+    Tokeniser::Ptr tokeniser2 = std::make_shared<Tokeniser>();
+    Tokens outputTokens2 = tokeniser->ConvertStringToTokens( stringToConvert2 );
+
+    CheckTokensAgainstExpected( expectedTokens, outputTokens2 );
 }
 
 /**
