@@ -23,7 +23,7 @@ RunCompiler(
     Tokens tokens;
     try
     {
-        LOG_AND_COUT( "Converting program file into tokens..." );
+        LOG_INFO_AND_COUT( "Converting program file into tokens..." );
         std::string inputFileString = FileIO::ReadFileToString( inputFile );
         Tokeniser::UPtr tokeniser = std::make_unique< Tokeniser >();
         tokens = tokeniser->ConvertStringToTokens( inputFileString );
@@ -39,12 +39,12 @@ RunCompiler(
         LOG_ERROR( "Caught exception while converting file to tokens: " + std::string( e.what() ) );
         return false;
     }
-    LOG_AND_COUT( "Successfully converted into tokens!" );
+    LOG_INFO_AND_COUT( "Successfully converted into tokens!" );
 
     AstNode::Ptr abstractSyntaxTree;
     try
     {
-        LOG_AND_COUT( "Converting tokens into an abstract syntax tree..." );
+        LOG_INFO_AND_COUT( "Converting tokens into an abstract syntax tree..." );
         AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >();
         constexpr GrammarSymbols::NT startingNtSymbol { Block };
         abstractSyntaxTree = astGenerator->GenerateAst( tokens, startingNtSymbol, false );
@@ -60,12 +60,12 @@ RunCompiler(
         LOG_ERROR( "Caught exception while generating abstract syntax tree: " + std::string( e.what() ) );
         return false;
     }
-    LOG_AND_COUT( "Successfully created abstract syntax tree!" );
+    LOG_INFO_AND_COUT( "Successfully created abstract syntax tree!" );
 
     SymbolTable::Ptr symbolTable;
     try
     {
-        LOG_AND_COUT( "Generating symbol table from abstract syntax tree..." );
+        LOG_INFO_AND_COUT( "Generating symbol table from abstract syntax tree..." );
         SymbolTableGenerator::UPtr symbolTableGenerator = std::make_unique< SymbolTableGenerator >();
         symbolTableGenerator->GenerateSymbolTableForAst( abstractSyntaxTree );
 
@@ -82,7 +82,7 @@ RunCompiler(
         LOG_ERROR( "Caught exception while creating symbol table: " + std::string( e.what() ) );
         return false;
     }
-    LOG_AND_COUT( "Successfully created symbol table!" );
+    LOG_INFO_AND_COUT( "Successfully created symbol table!" );
 
     // TODO: consider defining custom exception types, e.g. syntax error, to specify whether error is internal or from
     // incorrect input. Consider how better to display non-internal errors, e.g. to the terminal as well as the logs.
@@ -222,7 +222,7 @@ main(
         }
         else
         {
-            LOG_AND_COUT( "Compilation successful!" );
+            LOG_INFO_AND_COUT( "Compilation successful!" );
             return 0;
         }
     }

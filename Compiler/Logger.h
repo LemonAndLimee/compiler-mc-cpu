@@ -54,17 +54,22 @@ public:
     }
 
     static void LogAndCout(
-        const std::string message
+        LogLevel logLevel,
+        const std::string message,
+        const char* codeFile,
+        const char* codeFunc,
+        int lineNum
     )
     {
-        LOG_INFO( message );
+        Logger::GetInstance()->LogMessage( logLevel, message, codeFile, codeFunc, lineNum );
         std::cout << message + "\n";
     }
 
     #define LOG_AND_THROW( logLevel, message, eType ) Logger::GetInstance()->LogAndThrow<eType>( logLevel, message, __FILE__, __FUNCTION__, __LINE__ )
     #define LOG_ERROR_AND_THROW( message, eType ) LOG_AND_THROW( LogLevel::ERROR, message, eType )
 
-    #define LOG_AND_COUT( message ) Logger::LogAndCout( message )
+    #define LOG_AND_COUT( logLevel, message ) Logger::LogAndCout( logLevel, message, __FILE__, __FUNCTION__, __LINE__ )
+    #define LOG_INFO_AND_COUT( message ) LOG_AND_COUT( LogLevel::INFO, message)
 
     void SetLogLevel( LogLevel level );
 

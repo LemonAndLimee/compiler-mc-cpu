@@ -52,7 +52,15 @@ Logger::LogMessage(
 {
     if ( logLevel <= m_logLevel )
     {
-        std::string logMessage;
+        std::time_t timestamp = time( NULL );
+        struct tm datetime;
+        localtime_s( &datetime, &timestamp );
+
+        char datetimeStr[128];
+        std::string conversionFormat = "%T: ";
+        std::strftime( datetimeStr, sizeof( datetimeStr ), conversionFormat.c_str(), &datetime );
+
+        std::string logMessage = datetimeStr;
         logMessage += LogLevelToString( logLevel ) + ": ";
         logMessage += std::string( codeFile ) + ", " + std::string( codeFunc );
         logMessage += ", line " + std::to_string( lineNum ) + ": ";
