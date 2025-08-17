@@ -1,8 +1,0 @@
-byte value = 1;
-
-byte multiplyValue = 5;
-byte multiplyTimes = 3;
-
-while (counter < multiplyTimes) {
-    value = value * multiplyValue;
-};
