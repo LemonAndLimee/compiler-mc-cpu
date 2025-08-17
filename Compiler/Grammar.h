@@ -197,8 +197,8 @@ namespace GrammarRules
         {
             If_else,
             {
-                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block },
-                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block, Else }
+                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block, Else },
+                { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block }
             }
         },
         {

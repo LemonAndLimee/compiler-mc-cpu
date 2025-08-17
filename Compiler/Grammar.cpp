@@ -33,7 +33,7 @@ GrammarSymbols::GetSymbolType(
     else
     {
         LOG_ERROR_AND_THROW( "Unknown symbol (" + std::to_string( symbol ) + ") type: "
-                             + std::to_string( maskedSymbolType ), std::runtime_error );
+                             + std::to_string( maskedSymbolType ), std::invalid_argument );
     }
 }
 
@@ -59,7 +59,7 @@ GrammarSymbols::ConvertSymbolToString(
     else
     {
         LOG_ERROR_AND_THROW( "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( symbolType )
-                             + " returned by GetSymbolType()", std::runtime_error );
+                             + " returned by GetSymbolType()", std::invalid_argument );
     }
 }
 

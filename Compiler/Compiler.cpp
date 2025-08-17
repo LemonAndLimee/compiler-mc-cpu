@@ -45,9 +45,9 @@ RunCompiler(
     try
     {
         LOG_INFO_AND_COUT( "Converting tokens into an abstract syntax tree..." );
-        AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >();
-        constexpr GrammarSymbols::NT startingNtSymbol { Block };
-        abstractSyntaxTree = astGenerator->GenerateAst( tokens, startingNtSymbol, false );
+        constexpr NT startingNonTerminal{ NT::Block };
+        AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNonTerminal );
+        abstractSyntaxTree = astGenerator->GenerateAst();
 
         if ( nullptr == abstractSyntaxTree )
         {

@@ -4,9 +4,7 @@
 class AstGeneratorTestsFixture
 {
 public:
-    AstGeneratorTestsFixture()
-    : m_astGenerator( std::make_unique< AstGenerator >() )
-    {}
+    AstGeneratorTestsFixture() = default;
 
     /**
      * \brief  Checks AST node is wrapper node around token - checks the node label is
@@ -21,8 +19,6 @@ public:
         Token::Ptr nodeToken = std::get< Token::Ptr >( node->m_storage );
         BOOST_CHECK( *token.get() == *nodeToken.get() );
     }
-
-    AstGenerator::UPtr m_astGenerator;
 };
 
 BOOST_FIXTURE_TEST_SUITE( AstGeneratorTests, AstGeneratorTestsFixture )
@@ -34,8 +30,8 @@ BOOST_AUTO_TEST_CASE( EmptyTokens )
 {
     Tokens tokens{};
     constexpr GrammarSymbols::NT startingNt { NT::Block };
-    constexpr bool allowLeftoverTokens{ true };
-    BOOST_CHECK_THROW( m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens ), std::runtime_error );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+    BOOST_CHECK_THROW( astGenerator->GenerateAst(), std::invalid_argument );
 }
 
 /**
@@ -47,14 +43,14 @@ BOOST_AUTO_TEST_CASE( StartingNtHasNoRules )
     // Arbitrary token to avoid the empty tokens error
     Tokens tokens{ std::make_shared< Token >( TokenType::AND ) };
     // Out of range value
-    constexpr GrammarSymbols::NT startingNt { static_cast< NT >( 1000u ) };
-    constexpr bool allowLeftoverTokens{ true };
-    BOOST_CHECK_THROW( m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens ), std::runtime_error );
+    constexpr GrammarSymbols::NT startingNt { static_cast< NT >( SymbolType::NonTerminal + 1000u ) };
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+    BOOST_CHECK_THROW( astGenerator->GenerateAst(), std::invalid_argument );
 }
 
 /**
  * Tests that when GenerateAst is called with tokens that don't match any of the rules associated with the starting
- * non-terminal, the method returns nullptr and doesn't remove any tokens.
+ * non-terminal, the method returns nullptr.
  */
 BOOST_AUTO_TEST_CASE( NoMatchesForAnyRules )
 {
@@ -62,16 +58,15 @@ BOOST_AUTO_TEST_CASE( NoMatchesForAnyRules )
     constexpr GrammarSymbols::NT startingNt { Variable };
     // Arbitrary token - doesn't match above rules
     Tokens tokens{ std::make_shared< Token >( TokenType::AND ) };
-    constexpr bool allowLeftoverTokens{ true };
 
-    BOOST_CHECK_EQUAL( nullptr, m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens ) );
-    // Check that no tokens were consumed as no successful rule was found.
-    BOOST_CHECK_EQUAL( 1u, tokens.size() );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    BOOST_CHECK_EQUAL( nullptr, astGenerator->GenerateAst() );
 }
 
 /**
- * Tests that when GenerateAst is called with a rule match of a single terminal symbol, it returns true and
- * consumes the token i.e. pops it from the container.
+ * Tests that when GenerateAst is called with a rule match of a single terminal symbol, it returns a successful
+ * match in the form of an AST node.
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_SingleTerminal )
 {
@@ -81,13 +76,11 @@ BOOST_AUTO_TEST_CASE( MatchesRule_SingleTerminal )
     const std::string tokenString = "hello";
     Token::Ptr idToken = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString );
     Tokens tokens{ idToken };
-    
-    constexpr bool allowLeftoverTokens{ true };
 
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_REQUIRE_NE( nullptr, returnedNode );
-    // Check that the token was popped from the container.
-    BOOST_CHECK_EQUAL( 0u, tokens.size() );
 
     // Check the returned node is a wrapper around the given token
     CheckNodeIsTokenWrapper( returnedNode, idToken );
@@ -105,13 +98,11 @@ BOOST_AUTO_TEST_CASE( HighLevelRule_SingleTerminalMatch )
     const std::string tokenString = "hello";
     Token::Ptr idToken = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString );
     Tokens tokens{ idToken };
-    
-    constexpr bool allowLeftoverTokens{ true };
 
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_REQUIRE_NE( nullptr, returnedNode );
-    // Check that the token was popped from the container.
-    BOOST_CHECK_EQUAL( 0u, tokens.size() );
 
     // Check the returned node is a wrapper around the given token
     CheckNodeIsTokenWrapper( returnedNode, idToken );
@@ -133,13 +124,11 @@ BOOST_AUTO_TEST_CASE( MatchesRule_SingleNonTerminal )
     const std::string tokenString = "hello";
     Token::Ptr idToken = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString );
     Tokens tokens{ idToken };
-    
-    constexpr bool allowLeftoverTokens{ true };
 
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_REQUIRE_NE( nullptr, returnedNode );
-    // Check that the token was popped from the container.
-    BOOST_CHECK_EQUAL( 0u, tokens.size() );
 
     // Expect the wrapper around the ID token to be returned, as there are no other symbols/child symbols in the rule.
     CheckNodeIsTokenWrapper( returnedNode, idToken );
@@ -168,13 +157,11 @@ BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
 
     // The set of tokens should satisfy the rule "Factor EXPONENT Factor"
     Tokens tokens{ idToken1, expToken, idToken2 };
-    
-    constexpr bool allowLeftoverTokens{ true };
 
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_REQUIRE_NE( nullptr, returnedNode );
-    // Check that the tokens were popped from the container.
-    BOOST_CHECK_EQUAL( 0u, tokens.size() );
 
     // Check the returned node is as expected:
     // - With label EXPONENT
@@ -197,40 +184,7 @@ BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
 
 /**
  * Tests that when GenerateAst is called with a NT that has a matching rule, but with leftover excess
- * tokens, if allow leftover tokens is set to true, it will return a successful result, and consume
- * only the token/s for the matched rule.
- */
-BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_Allowed )
-{
-    // Variable can either resolve to data type + id, or just id
-    constexpr GrammarSymbols::NT startingNt { Variable };
-    // A single ID token should match one of the rules for Variable
-    const std::string tokenString = "hello";
-    Token::Ptr idToken = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString );
-
-    Token::Ptr excessToken = std::make_shared< Token >( TokenType::MOD );
-    Token::Ptr excessToken1 = std::make_shared< Token >( TokenType::FOR );
-    // Tokens contains a match followed by leftover token
-    Tokens tokens{ idToken, excessToken, excessToken1 };
-    size_t originalTokensSize = tokens.size();
-    
-    // Do allow leftover tokens
-    constexpr bool allowLeftoverTokens{ true };
-
-    // Expect successful result
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
-    BOOST_REQUIRE_NE( nullptr, returnedNode );
-
-    // Check that the token was popped from the container.
-    BOOST_CHECK_EQUAL( originalTokensSize - 1u, tokens.size() );
-
-    // Check the returned node is a wrapper around the given token
-    CheckNodeIsTokenWrapper( returnedNode, idToken );
-}
-
-/**
- * Tests that when GenerateAst is called with a NT that has a matching rule, but with leftover excess
- * tokens, if allow leftover tokens is set to false, it will return nullptr and not modify tokens.
+ * tokens, it will return nullptr.
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed )
 {
@@ -245,23 +199,18 @@ BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed )
     // Tokens contains a match followed by leftover token
     Tokens tokens{ idToken, excessToken, excessToken1 };
     size_t originalTokensSize = tokens.size();
-    
-    // Do not allow leftover tokens
-    constexpr bool allowLeftoverTokens{ false };
+
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
 
     // Expect non-successful result
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_CHECK_EQUAL( nullptr, returnedNode );
-
-    // Check tokens wasn't modified
-    BOOST_CHECK_EQUAL( originalTokensSize, tokens.size() );
 }
 
 /**
  * Tests that when GenerateAst is called with a NT that has a matching rule with a non-terminal as its last symbol,
- * but with leftover excess tokens, if allow leftover tokens is set to false, it will return nullptr and not modify
- * tokens. This test is to check that the same restriction is applied to the non-terminal as it creates its own
- * sub-tree.
+ * but with leftover excess tokens, it will return nullptr. This test is to check that the same restriction is applied
+ * to the non-terminal as it creates its own sub-tree.
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed_NtLastSymbol )
 {
@@ -287,22 +236,19 @@ BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed_NtLastSymbol )
     // at the end
     Tokens tokens{ idToken1, expToken, idToken2, excessToken, excessToken1 };
     size_t originalTokensSize = tokens.size();
-    
-    // Do not allow leftover tokens
-    constexpr bool allowLeftoverTokens{ false };
+
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
 
     // Expect non-successful result
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_CHECK_EQUAL( nullptr, returnedNode );
-
-    // Check tokens wasn't modified
-    BOOST_CHECK_EQUAL( originalTokensSize, tokens.size() );
 }
 
 /**
  * Tests that GenerateAst can handle a complex set of tokens, representing an AST with multiple sub-trees.
+ * In this example use a while loop.
  */
-BOOST_AUTO_TEST_CASE( MultipleSubTrees )
+BOOST_AUTO_TEST_CASE( MultipleSubTrees_WhileLoop )
 {
     // Use tokens to represent the following:
     // while ( 1 ) { byte varName = 0; };
@@ -321,14 +267,12 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees )
 
     Tokens tokens = { whileToken, parenOpenToken, oneToken, parenCloseToken, braceOpenToken, byteToken,
                       varToken, assignToken, zeroToken, semiColonToken1, braceCloseToken, semiColonToken2 };
-    
-    constexpr GrammarSymbols::NT startingNt{ NT::Block };
-    constexpr bool allowLeftoverTokens{ true };
 
-    AstNode::Ptr returnedNode = m_astGenerator->GenerateAst( tokens, startingNt, allowLeftoverTokens );
+    constexpr GrammarSymbols::NT startingNt{ NT::Block };
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
     BOOST_REQUIRE_NE( nullptr, returnedNode );
-    // Check that all tokens were popped from the container.
-    BOOST_CHECK_EQUAL( 0u, tokens.size() );
 
     // Check node label is WHILE
     BOOST_CHECK_EQUAL( TokenType::WHILE, returnedNode->m_nodeLabel );
@@ -337,7 +281,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees )
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
     AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
     BOOST_REQUIRE_EQUAL( 2u, children.size() );
-    
+
     // Expect first child to be storing a BYTE token
     AstNode::Ptr child1 = children[0];
     CheckNodeIsTokenWrapper( child1, oneToken );
@@ -349,7 +293,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees )
     BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
     AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
     BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
-    
+
     // Expect first child of the assign node to be a Variable node, holding 2 wrapper nodes around the
     // data type and the identifier
     AstNode::Ptr variableNode = assignChildren[0];
@@ -367,6 +311,125 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees )
     // Expect second child of the assign node to be a wrapper node around the byte value of 0
     AstNode::Ptr byteNode = assignChildren[1];
     CheckNodeIsTokenWrapper( byteNode, zeroToken );
+}
+
+/**
+ * Tests that GenerateAst can handle a complex set of tokens, representing an AST with multiple sub-trees.
+ * In this example use an if-else statement.
+ */
+BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
+{
+    // Use tokens to represent the following:
+    // if ( 1 ) { varName = 0; } else { varName = 0; };
+    Token::Ptr ifToken = std::make_shared< Token >( TokenType::IF );
+
+    Token::Ptr parenOpenToken = std::make_shared< Token >( TokenType::PAREN_OPEN );
+    Token::Ptr oneToken = std::make_shared< Token >( TokenType::BYTE, 1u );
+    Token::Ptr parenCloseToken = std::make_shared< Token >( TokenType::PAREN_CLOSE);
+
+    Token::Ptr braceOpenToken = std::make_shared< Token >( TokenType::BRACE_OPEN);
+    Token::Ptr varToken = std::make_shared< Token >( TokenType::IDENTIFIER, "varName" );
+    Token::Ptr assignToken = std::make_shared< Token >( TokenType::ASSIGN );
+    Token::Ptr zeroToken = std::make_shared< Token >( TokenType::BYTE, 0u );
+    Token::Ptr semiColonToken = std::make_shared< Token >( TokenType::SEMICOLON );
+    Token::Ptr braceCloseToken = std::make_shared< Token >( TokenType::BRACE_CLOSE);
+
+    Token::Ptr elseToken = std::make_shared< Token >( TokenType::ELSE );
+
+    Token::Ptr braceOpenToken2 = std::make_shared< Token >( TokenType::BRACE_OPEN );
+    Token::Ptr varToken2 = std::make_shared< Token >( TokenType::IDENTIFIER, "varName" );
+    Token::Ptr assignToken2 = std::make_shared< Token >( TokenType::ASSIGN );
+    Token::Ptr zeroToken2 = std::make_shared< Token >( TokenType::BYTE, 0u );
+    Token::Ptr semiColonToken2 = std::make_shared< Token >( TokenType::SEMICOLON );
+    Token::Ptr braceCloseToken2 = std::make_shared< Token >( TokenType::BRACE_CLOSE );
+
+    Token::Ptr semiColonToken3 = std::make_shared< Token >( TokenType::SEMICOLON );
+
+    Tokens tokens = {
+        ifToken,
+        parenOpenToken,
+        oneToken,
+        parenCloseToken,
+        braceOpenToken,
+        varToken,
+        assignToken,
+        zeroToken,
+        semiColonToken,
+        braceCloseToken,
+        elseToken,
+        braceOpenToken2,
+        varToken2,
+        assignToken2,
+        zeroToken2,
+        semiColonToken2,
+        braceCloseToken2,
+        semiColonToken3
+    };
+
+    constexpr GrammarSymbols::NT startingNt{ NT::Block };
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
+    BOOST_REQUIRE_NE( nullptr, returnedNode );
+
+    // Check node label is IF
+    BOOST_CHECK_EQUAL( TokenType::IF, returnedNode->m_nodeLabel );
+    // Check is storing 3 children
+    BOOST_CHECK( returnedNode->IsStorageInUse() );
+    BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
+    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    BOOST_REQUIRE_EQUAL( 3u, children.size() );
+
+    // Expect first child to be storing a BYTE token
+    AstNode::Ptr child1 = children[0];
+    CheckNodeIsTokenWrapper( child1, oneToken );
+
+    // Expect second child to have label ASSIGN, and holding 2 child nodes
+    {
+        AstNode::Ptr assignNode = children[1];
+        BOOST_CHECK_EQUAL( TokenType::ASSIGN, assignNode->m_nodeLabel );
+        BOOST_CHECK( assignNode->IsStorageInUse() );
+        BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
+        AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
+        BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
+
+        // Expect first child of the assign node to be an ID node, holding 2 wrapper nodes around the
+        // data type and the identifier
+        AstNode::Ptr idNode = assignChildren[0];
+        CheckNodeIsTokenWrapper( idNode, varToken );
+
+        // Expect second child of the assign node to be a wrapper node around the byte value of 0
+        AstNode::Ptr byteNode = assignChildren[1];
+        CheckNodeIsTokenWrapper( byteNode, zeroToken );
+    }
+
+    // Expect third child to be an ELSE node, with an assign child node
+    {
+        AstNode::Ptr elseNode = children[2];
+        BOOST_CHECK_EQUAL( TokenType::ELSE, elseNode->m_nodeLabel );
+        BOOST_CHECK( elseNode->IsStorageInUse() );
+        BOOST_CHECK( !elseNode->IsStoringToken() ); // Expect it to be storing children
+        AstNode::Children elseChildren = std::get< AstNode::Children >( elseNode->m_storage );
+        BOOST_REQUIRE_EQUAL( 1u, elseChildren.size() );
+
+        {
+            AstNode::Ptr assignNode = elseChildren[0];
+            BOOST_CHECK_EQUAL( TokenType::ASSIGN, assignNode->m_nodeLabel );
+            BOOST_CHECK( assignNode->IsStorageInUse() );
+            BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
+            AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
+            BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
+
+            // Expect first child of the assign node to be an ID node, holding 2 wrapper nodes around the
+            // data type and the identifier
+            AstNode::Ptr idNode = assignChildren[0];
+            CheckNodeIsTokenWrapper( idNode, varToken );
+
+            // Expect second child of the assign node to be a wrapper node around the byte value of 0
+            AstNode::Ptr byteNode = assignChildren[1];
+            CheckNodeIsTokenWrapper( byteNode, zeroToken );
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END() // AstGeneratorTests

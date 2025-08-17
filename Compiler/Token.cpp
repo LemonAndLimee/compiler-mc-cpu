@@ -77,43 +77,19 @@ Token::ToString()
 }
 
 /**
- * Converts collection of tokens into human-readable string form.
+ * Converts the first x elements from a starting index in collection of tokens into human-readable string form.
  *
- * `param[in]  tokens  Collection of tokens.
- *
- * \return String form of tokens.
- */
-std::string
-Token::ConvertTokensToString(
-    const Tokens& tokens
-)
-{
-    std::string tokensString;
-    for ( size_t i = 0; i < tokens.size(); ++i )
-    {
-        tokensString += tokens[i]->ToString() + ", ";
-    }
-
-    // Pop off the leftover comma and space
-    tokensString.pop_back();
-    tokensString.pop_back();
-
-    return tokensString;
-}
-
-/**
- * Converts the first x elements in collection of tokens into human-readable string form.
- *
- * \param[in]  tokens     Collection of tokens.
- * \param[in]  numTokens  Number of tokens to convert to string, starting at the beginning of the collection.
- *                        If this is greater than the length of tokens, the first x available elements will be
- *                        converted.
+ * \param[in]  tokens      Collection of tokens.
+ * \param[in]  startIndex  Index of token to start from.
+ * \param[in]  numTokens   Number of tokens to convert to string, starting at \ref startIndex. If this is greater
+ *                         than the length of tokens, the first x available elements will be converted.
  *
  * \return String form of tokens.
  */
 std::string
 Token::ConvertTokensToString(
     const Tokens& tokens,
+    size_t startIndex,
     size_t numTokens
 )
 {
@@ -124,16 +100,18 @@ Token::ConvertTokensToString(
     }
     // Else if tokens contains at least 1
 
-    for ( size_t i = 0; i < numTokens; ++i )
+    for ( size_t i = startIndex; i < startIndex+numTokens; ++i )
     {
         if ( tokens.size() > i )
         {
-            tokensString += tokens[i]->ToString() + ", ";
+            tokensString += tokens[i]->ToString();
+            // If not the last element in string, add comma and space
+            if ( i < startIndex + numTokens - 1u)
+            {
+                tokensString += ", ";
+            }
         }
     }
-    // Pop off the leftover comma and space
-    tokensString.pop_back();
-    tokensString.pop_back();
 
     return tokensString;
 }
