@@ -432,4 +432,226 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
     }
 }
 
+/**
+ * Tests that operators are parsed correctly regarding order, and parentheses. The current expected behaviour is as
+ * follows:
+ *
+ * - If more than one operator is used, order of operations should be used, and no parentheses should be required.
+ *   - A + B * C should result in a plus node, holding A and a multiply node as its children.
+ * - If parentheses are used, these should take priority over the order of operations.
+ *   - (A + B) * C should result in a multiply node, holding a plus node and C as its children.
+ * - The current unresolved behaviour in the grammar is if two operators at the same level (e.g. + and -, == and ==).
+ *   - Typical behaviour would be to read from left to right but the grammar currently doesn't support this. Therefore
+ *     parentheses should be used to define order of operations - without parentheses present in this scenario, the
+ *     parsing operation should fail.
+ */
+BOOST_AUTO_TEST_SUITE( OrderOfOperationsTests )
+
+/**
+ * Tests that when GenerateAst is called on an expression containing multiple operators without any parentheses, it
+ * resolves the order of operations correctly when creating sub-trees.
+ */
+BOOST_AUTO_TEST_CASE( MultipleOperators_NoParentheses )
+{
+    // Create tokens for a Logical expression
+    Token::Ptr byte1 = std::make_shared< Token >( TokenType::BYTE, 1 );
+    Token::Ptr plus = std::make_shared< Token >( TokenType::PLUS );
+    Token::Ptr byte2 = std::make_shared< Token >( TokenType::BYTE, 2 );
+    Token::Ptr multiply = std::make_shared< Token >( TokenType::MULTIPLY );
+    Token::Ptr byte3 = std::make_shared< Token >( TokenType::BYTE, 3 );
+
+    Tokens tokens{
+        byte1,
+        plus,
+        byte2,
+        multiply,
+        byte3,
+    };
+
+    constexpr GrammarSymbols::NT startingNt { Logical };
+
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
+    BOOST_REQUIRE_NE( nullptr, returnedNode );
+
+    // Check the returned node is as expected:
+    // - With label PLUS
+    // - Storing two child nodes, one for the byte 1, and another for the multiply sub-tree
+    BOOST_CHECK_EQUAL( TokenType::PLUS, returnedNode->m_nodeLabel );
+
+    BOOST_CHECK( returnedNode->IsStorageInUse() );
+    BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
+    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    BOOST_REQUIRE_EQUAL( 2u, children.size() );
+
+    // Check first child holds the first byte token
+    AstNode::Ptr child1 = children[0];
+    CheckNodeIsTokenWrapper( child1, byte1 );
+
+    // Check second child holds a subtree for the multiply operator
+    AstNode::Ptr child2 = children[1];
+    BOOST_CHECK_EQUAL( TokenType::MULTIPLY, child2->m_nodeLabel );
+    BOOST_CHECK( child2->IsStorageInUse() );
+    BOOST_CHECK( !child2->IsStoringToken() ); // Expect it to be storing children
+    AstNode::Children multiplyChildren = std::get< AstNode::Children >( child2->m_storage );
+    BOOST_REQUIRE_EQUAL( 2u, multiplyChildren.size() );
+
+    AstNode::Ptr multiplyChild1 = multiplyChildren[0];
+    CheckNodeIsTokenWrapper( multiplyChild1, byte2 );
+    AstNode::Ptr multiplyChild2 = multiplyChildren[1];
+    CheckNodeIsTokenWrapper( multiplyChild2, byte3 );
+}
+
+/**
+ * Tests that when GenerateAst is called on an expression containing multiple operators and parentheses that define
+ * a certain order of operations, the created sub-trees reflect this.
+ */
+BOOST_AUTO_TEST_CASE( MultipleOperators_ParenthesesSetNewOrder )
+{
+    // Create tokens for a Logical expression
+    Token::Ptr parenOpen = std::make_shared< Token >( TokenType::PAREN_OPEN );
+    Token::Ptr byte1 = std::make_shared< Token >( TokenType::BYTE, 1 );
+    Token::Ptr plus = std::make_shared< Token >( TokenType::PLUS );
+    Token::Ptr byte2 = std::make_shared< Token >( TokenType::BYTE, 2 );
+    Token::Ptr parenClose = std::make_shared< Token >( TokenType::PAREN_CLOSE );
+    Token::Ptr multiply = std::make_shared< Token >( TokenType::MULTIPLY );
+    Token::Ptr byte3 = std::make_shared< Token >( TokenType::BYTE, 3 );
+
+    Tokens tokens{
+        parenOpen,
+        byte1,
+        plus,
+        byte2,
+        parenClose,
+        multiply,
+        byte3,
+    };
+
+    constexpr GrammarSymbols::NT startingNt { Logical };
+
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
+    BOOST_REQUIRE_NE( nullptr, returnedNode );
+
+    // Check the returned node is as expected:
+    // - With label MULTIPLY
+    // - Storing two child nodes, one for the plus node, and another for byte 3
+    BOOST_CHECK_EQUAL( TokenType::MULTIPLY, returnedNode->m_nodeLabel );
+
+    BOOST_CHECK( returnedNode->IsStorageInUse() );
+    BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
+    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    BOOST_REQUIRE_EQUAL( 2u, children.size() );
+
+    // Check first child holds a subtree for the plus operator
+    AstNode::Ptr child1 = children[0];
+    BOOST_CHECK_EQUAL( TokenType::PLUS, child1->m_nodeLabel );
+    BOOST_CHECK( child1->IsStorageInUse() );
+    BOOST_CHECK( !child1->IsStoringToken() ); // Expect it to be storing children
+    AstNode::Children plusChildren = std::get< AstNode::Children >( child1->m_storage );
+    BOOST_REQUIRE_EQUAL( 2u, plusChildren.size() );
+
+    AstNode::Ptr plusChild1 = plusChildren[0];
+    CheckNodeIsTokenWrapper( plusChild1, byte1 );
+    AstNode::Ptr plusChild2 = plusChildren[1];
+    CheckNodeIsTokenWrapper( plusChild2, byte2 );
+
+    // Check second child holds the third byte token
+    AstNode::Ptr child2 = children[1];
+    CheckNodeIsTokenWrapper( child2, byte3 );
+}
+
+/**
+ * Tests that when GenerateAst is called on an expression containing multiple operators at the same level, but no
+ * parentheses, it fails and returns an error.
+ */
+BOOST_AUTO_TEST_CASE( MultipleOperatorsAtSameLevel_NoParentheses )
+{
+    // Create tokens for a Logical expression
+    Token::Ptr byte1 = std::make_shared< Token >( TokenType::BYTE, 1 );
+    Token::Ptr plus = std::make_shared< Token >( TokenType::PLUS );
+    Token::Ptr byte2 = std::make_shared< Token >( TokenType::BYTE, 2 );
+    Token::Ptr minus = std::make_shared< Token >( TokenType::MINUS );
+    Token::Ptr byte3 = std::make_shared< Token >( TokenType::BYTE, 3 );
+
+    Tokens tokens{
+        byte1,
+        plus,
+        byte2,
+        minus,
+        byte3,
+    };
+
+    constexpr GrammarSymbols::NT startingNt { Logical };
+
+    AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+    AstNode::Ptr returnedNode = astGenerator->GenerateAst();
+    BOOST_CHECK_EQUAL( nullptr, returnedNode );
+}
+
+/**
+ * Tests that when GenerateAst is called on an expression containing multiple operators at the same level with
+ * parentheses, the created sub-trees reflect the specified order.
+ */
+ BOOST_AUTO_TEST_CASE( MultipleOperatorsAtSameLevel_Parentheses )
+ {
+     // Create tokens for a Logical expression
+     Token::Ptr parenOpen = std::make_shared< Token >( TokenType::PAREN_OPEN );
+     Token::Ptr byte1 = std::make_shared< Token >( TokenType::BYTE, 1 );
+     Token::Ptr plus = std::make_shared< Token >( TokenType::PLUS );
+     Token::Ptr byte2 = std::make_shared< Token >( TokenType::BYTE, 2 );
+     Token::Ptr parenClose = std::make_shared< Token >( TokenType::PAREN_CLOSE );
+     Token::Ptr minus = std::make_shared< Token >( TokenType::MINUS );
+     Token::Ptr byte3 = std::make_shared< Token >( TokenType::BYTE, 3 );
+
+     Tokens tokens{
+         parenOpen,
+         byte1,
+         plus,
+         byte2,
+         parenClose,
+         minus,
+         byte3,
+     };
+
+     constexpr GrammarSymbols::NT startingNt { Logical };
+
+     AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
+
+     AstNode::Ptr returnedNode = astGenerator->GenerateAst();
+     BOOST_REQUIRE_NE( nullptr, returnedNode );
+
+     // Check the returned node is as expected:
+     // - With label MINUS
+     // - Storing two child nodes, one for the plus node, and another for byte 3
+     BOOST_CHECK_EQUAL( TokenType::MINUS, returnedNode->m_nodeLabel );
+
+     BOOST_CHECK( returnedNode->IsStorageInUse() );
+     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
+     AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+     BOOST_REQUIRE_EQUAL( 2u, children.size() );
+
+     // Check first child holds a subtree for the plus operator
+     AstNode::Ptr child1 = children[0];
+     BOOST_CHECK_EQUAL( TokenType::PLUS, child1->m_nodeLabel );
+     BOOST_CHECK( child1->IsStorageInUse() );
+     BOOST_CHECK( !child1->IsStoringToken() ); // Expect it to be storing children
+     AstNode::Children plusChildren = std::get< AstNode::Children >( child1->m_storage );
+     BOOST_REQUIRE_EQUAL( 2u, plusChildren.size() );
+
+     AstNode::Ptr plusChild1 = plusChildren[0];
+     CheckNodeIsTokenWrapper( plusChild1, byte1 );
+     AstNode::Ptr plusChild2 = plusChildren[1];
+     CheckNodeIsTokenWrapper( plusChild2, byte2 );
+
+     // Check second child holds the third byte token
+     AstNode::Ptr child2 = children[1];
+     CheckNodeIsTokenWrapper( child2, byte3 );
+ }
+
+BOOST_AUTO_TEST_SUITE_END() // OrderOfOperationsTests
+
 BOOST_AUTO_TEST_SUITE_END() // AstGeneratorTests
