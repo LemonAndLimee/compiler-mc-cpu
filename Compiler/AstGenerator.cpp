@@ -167,72 +167,18 @@ AstGenerator::TryRule(
                            + "..." );
 
     Rule ruleWorkingCopy = rule;
-
     // If there are parsed symbols from a previous rule check, check for an overlap with the start of this rule
-    if ( 0u < currentParsedDeque.size() )
-    {
-        // If the front symbol of the rule matches the bottom of the stack, it can be skipped.
-        size_t dequeIndex{ 0u };
-        while ( !ruleWorkingCopy.empty()
-                && dequeIndex < currentParsedDeque.size()
-                && ruleWorkingCopy[0] == std::get< Symbol >( currentParsedDeque[dequeIndex] ) )
-        {
-            std::string symbolString = GrammarSymbols::ConvertSymbolToString( ruleWorkingCopy[0] );
-            LOG_INFO_MEDIUM_LEVEL( "Skipping symbol '" + symbolString + "' as it was parsed by a previous attempt.");
-            ruleWorkingCopy.erase( ruleWorkingCopy.begin() );
-            // Update index to skip past the token(s) for the already verified element
-            currentTokenIndex = std::get< size_t >( currentParsedDeque[dequeIndex] );
-            // Add the previously created AST element to elements
-            std::shared_ptr< AstNode::Element > storedElement
-                = std::get< std::shared_ptr< AstNode::Element > >( currentParsedDeque[dequeIndex] );
-            if ( storedElement != nullptr )
-            {
-                elementsToPopulate.push_back( *storedElement.get() );
-            }
-            // Increment deque index, as this symbol has now been skipped
-            dequeIndex++;
-        }
-
-        // Pop the remaining non-reusable symbols off the back of the deque - the back will match the first
-        // rule element again once the excess symbols have been popped.
-        if ( !ruleWorkingCopy.empty() )
-        {
-            // Deque index currently describes how many entries to keep
-            currentParsedDeque.resize( dequeIndex );
-        }
-    }
+    ReusePreviouslyParsedSymbols( currentTokenIndex, ruleWorkingCopy, elementsToPopulate, currentParsedDeque );
 
     // If there are still symbols to parse
     if ( !ruleWorkingCopy.empty() )
     {
         // Perform look-ahead, and check that any terminal symbols in the rule are present, and in order.
         // This allows early-stopping without generating further sub-trees.
-        size_t indexToStartLookahead{ currentTokenIndex };
-        for ( Symbol symbol : rule )
-        {
-            if ( SymbolType::Terminal == GrammarSymbols::GetSymbolType( symbol ) )
+        if ( !PerformLookAhead( currentTokenIndex, rule ) )
             {
-                // Check through tokens, from the position of the last found terminal, to see if the current
-                // terminal symbol exists.
-                bool foundSymbol{ false };
-                for ( size_t tokenIndex = indexToStartLookahead; tokenIndex < m_tokens.size(); ++tokenIndex )
-                {
-                    Token::Ptr token = m_tokens[tokenIndex];
-                    if ( symbol == token->m_type )
-                    {
-                        indexToStartLookahead = tokenIndex;
-                        foundSymbol = true;
-                        break;
-                    }
-                }
-                if ( !foundSymbol )
-                {
-                    std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
-                    LOG_INFO_MEDIUM_LEVEL( "Lookahead: symbol " + symbolString + " could not be found. Rejecting rule "
-                                           + ruleString );
+            // Failure reason already logged
                     return false;
-                }
-            }
         }
 
         // Check each symbol in the rule for a match
@@ -243,10 +189,40 @@ AstGenerator::TryRule(
             std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
             LOG_INFO_MEDIUM_LEVEL( "Trying symbol '" + symbolString + "' in rule '" + ruleString + "'" );
 
+            bool allowLeftoverTokensOnSymbol{ true };
+            if ( !allowLeftoverTokensOnLastSymbol && ruleWorkingCopy.size() - 1 == i )
+            {
+                allowLeftoverTokensOnSymbol = false;
+            }
+            if ( !TrySymbol( currentTokenIndex, symbol, allowLeftoverTokensOnSymbol, elementsToPopulate, currentParsedDeque ) )
+            {
+                LOG_INFO_MEDIUM_LEVEL( "Symbol check '" + symbolString + "' failed, rejecting rule '"
+                                       + ruleString + "'" );
+                return false;
+            }
+        }
+
+    }
+
+    // If no symbols have been rejected, the rule matches.
+    LOG_INFO_LOW_LEVEL( "No symbols rejected, returning true for rule '" + ruleString + "'" );
+    return true;
+}
+
+bool
+AstGenerator::TrySymbol(
+    size_t& currentTokenIndex,
+    Symbol symbol,
+    bool allowLeftoverTokens,
+    AstNode::Elements& elementsToPopulate,
+    std::deque< ParsedSymbolInfo >& currentParsedDeque
+)
+{
+    std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
             // Reject if we've run out of tokens to consume
             if ( currentTokenIndex >= m_tokens.size() )
             {
-                LOG_INFO_MEDIUM_LEVEL( "Run out of tokens to consume: rejecting rule " + ruleString );
+        LOG_INFO_MEDIUM_LEVEL( "Run out of tokens to consume." );
                 return false;
             }
 
@@ -294,11 +270,7 @@ AstGenerator::TryRule(
 
                 // If not allowed leftover tokens AND this is the last symbol in the rule,
                 // disallow leftover tokens on the generated AST
-                bool callWithAllowLeftoverTokens{ true };
-                if ( !allowLeftoverTokensOnLastSymbol && i == ruleWorkingCopy.size()-1 )
-                {
-                    callWithAllowLeftoverTokens = false;
-                }
+        bool callWithAllowLeftoverTokens{ allowLeftoverTokens };
 
                 // Generate sub-tree from the non-terminal symbol and add to elements.
                 LOG_INFO_LOW_LEVEL( "Generating AST for '" + symbolString + "'" );
@@ -308,7 +280,7 @@ AstGenerator::TryRule(
 
                 if ( nullptr == astNode )
                 {
-                    LOG_INFO_MEDIUM_LEVEL( "GenerateAst() returned nullptr. Rejecting rule '" + ruleString + "'" );
+            LOG_INFO_MEDIUM_LEVEL( "GenerateAst() returned nullptr." );
                     return false;
                 }
 
@@ -335,11 +307,111 @@ AstGenerator::TryRule(
                 elementsToPopulate.push_back( elementToStore );
             }
             currentParsedDeque.push_back( std::make_tuple( symbol, pElement, currentTokenIndex ) );
-        }
 
+    return true;
     }
 
-    // If no symbols have been rejected, the rule matches.
-    LOG_INFO_LOW_LEVEL( "No symbols rejected, returning true for rule '" + ruleString + "'" );
+/**
+ * \brief  Checks the deque of already parsed symbols, and compares them to the beginning of this rule. If the start
+ *         of this rule has already been parsed, pop it off the front of the rule, and add it to the elements vector.
+ *
+ * \param[in,out]  currentTokenIndex   Index of the next token to parse, i.e. from which to start the check. If symbols
+ *                                     are skipped, this is updated.
+ * \param[in,out]  ruleWorkingCopy     The current rule that is being tested. If symbols are skipped, they are popped
+ *                                     off the front.
+ * \param[out]     elementsToPopulate  Child nodes or tokens belonging to the rule being tested. Is populated with
+ *                                     elements belonging to previously parsed symbols.
+ * \param[in,out]  currentParsedDeque  Deque of already verified symbols for the current set of rules. Any symbols that
+ *                                     do not overlap with the current rule are removed from the end.
+ */
+void
+AstGenerator::ReusePreviouslyParsedSymbols(
+    size_t& currentTokenIndex,
+    Rule& ruleWorkingCopy,
+    AstNode::Elements& elementsToPopulate,
+    std::deque< ParsedSymbolInfo >& currentParsedDeque
+)
+{
+    if ( 0u < currentParsedDeque.size() )
+    {
+        // If the front symbol of the rule matches the bottom of the stack, it can be skipped.
+        size_t dequeIndex{ 0u };
+        while ( !ruleWorkingCopy.empty()
+                && dequeIndex < currentParsedDeque.size()
+                && ruleWorkingCopy[0] == std::get< Symbol >( currentParsedDeque[dequeIndex] ) )
+        {
+            std::string symbolString = GrammarSymbols::ConvertSymbolToString( ruleWorkingCopy[0] );
+            LOG_INFO_MEDIUM_LEVEL( "Skipping symbol '" + symbolString + "' as it was parsed by a previous attempt.");
+            ruleWorkingCopy.erase( ruleWorkingCopy.begin() );
+            // Update index to skip past the token(s) for the already verified element
+            currentTokenIndex = std::get< size_t >( currentParsedDeque[dequeIndex] );
+            // Add the previously created AST element to elements
+            std::shared_ptr< AstNode::Element > storedElement
+                = std::get< std::shared_ptr< AstNode::Element > >( currentParsedDeque[dequeIndex] );
+            if ( storedElement != nullptr )
+            {
+                elementsToPopulate.push_back( *storedElement.get() );
+            }
+            // Increment deque index, as this symbol has now been skipped
+            dequeIndex++;
+        }
+
+        // Pop the remaining non-reusable symbols off the back of the deque - the back will match the first
+        // rule element again once the excess symbols have been popped.
+        if ( !ruleWorkingCopy.empty() )
+        {
+            // Deque index currently describes how many entries to keep
+            currentParsedDeque.resize( dequeIndex );
+        }
+    }
+}
+
+/**
+ * \brief  Performs a look-ahead check for the given rule, by checking that each of its terminals are in the
+ *         collection of tokens being checked, and that they are in order. This allows for early stopping on an
+ *         incompatible rule, without going into the non-terminal recursive searches.
+ *
+ * \param[in,out]  currentTokenIndex  Index of the next token to parse, i.e. from which to start the lookahead.
+ * \param[in]      rule               The current rule that is being tested. Consists of symbols, either terminal
+ *                                    or non-terminal.
+ *
+ * \return  True if the look-ahead check succeeds, false if a match is not found.
+ */
+bool
+AstGenerator::PerformLookAhead(
+    size_t& currentTokenIndex,
+    const Rule& rule
+)
+{
+    std::string ruleString = GrammarRules::ConvertRuleToString( rule );
+    size_t indexToStartLookahead{ currentTokenIndex };
+    for ( Symbol symbol : rule )
+    {
+        if ( SymbolType::Terminal == GrammarSymbols::GetSymbolType( symbol ) )
+        {
+            // Check through tokens, from the position of the last found terminal, to see if the current
+            // terminal symbol exists.
+            bool foundSymbol{ false };
+            for ( size_t tokenIndex = indexToStartLookahead; tokenIndex < m_tokens.size(); ++tokenIndex )
+            {
+                Token::Ptr token = m_tokens[tokenIndex];
+                if ( symbol == token->m_type )
+                {
+                    indexToStartLookahead = tokenIndex;
+                    foundSymbol = true;
+                    break;
+                }
+            }
+            if ( !foundSymbol )
+            {
+                std::string symbolString = GrammarSymbols::ConvertSymbolToString( symbol );
+                LOG_INFO_MEDIUM_LEVEL( "Lookahead: symbol " + symbolString + " could not be found. Rejecting rule "
+                                       + ruleString );
+                return false;
+            }
+        }
+    }
+
     return true;
+
 }

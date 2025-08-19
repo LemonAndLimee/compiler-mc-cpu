@@ -33,6 +33,20 @@ protected:
                   AstNode::Elements& elementsToPopulate,
                   std::deque< ParsedSymbolInfo >& currentParsedDeque );
 
+    bool TrySymbol( size_t& currentTokenIndex,
+                    Symbol symbol,
+                    bool allowLeftoverTokens,
+                    AstNode::Elements& elementsToPopulate,
+                    std::deque< ParsedSymbolInfo >& currentParsedDeque );
+
+    void ReusePreviouslyParsedSymbols( size_t& currentTokenIndex,
+                                       Rule& ruleWorkingCopy,
+                                       AstNode::Elements& elementsToPopulate,
+                                       std::deque< ParsedSymbolInfo >& currentParsedDeque );
+
+    bool PerformLookAhead( size_t& currentTokenIndex,
+                           const Rule& rule );
+
     // Stores the collection of tokens being parsed for this AST
     Tokens m_tokens;
 
