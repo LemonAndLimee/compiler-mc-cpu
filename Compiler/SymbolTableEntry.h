@@ -15,5 +15,4 @@ struct SymbolTableEntry
     DataType dataType;
     bool isReadFrom;
     bool isWrittenTo;
-    uint8_t memoryAddress;
 };
