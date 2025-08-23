@@ -28,6 +28,9 @@ enum Opcode
     BRZ   // Branch if zero
 };
 
+// Operand can either be a string identifier/label, or a numeric value (or can be empty i.e. monostate)
+using Operand = std::variant< std::monostate, std::string, uint8_t >;
+
 /**
  * \brief  Represents an instruction in three-address code. Stores the result of an operation, the operation type,
  *         and up to two operands. The target and opcode may be unused in the case of branches and assignment
@@ -37,9 +40,6 @@ enum Opcode
 struct ThreeAddrInstruction
 {
     using Ptr = std::shared_ptr< ThreeAddrInstruction >;
-
-    // Operand can either be a string identifier/label, or a numeric value (or can be empty i.e. monostate)
-    using Operand = std::variant< std::monostate, std::string, uint8_t >;
 
     ThreeAddrInstruction(
         std::string resultId,

@@ -8,6 +8,8 @@
 #include "AstNode.h"
 #include "ThreeAddrInstruction.h"
 
+#include <tuple>
+
 /**
  * \brief  Class responsible for generating an intermediate representation of code. Takes an abstract syntax tree
  *         (which contains symbol tables for its scopes) and converts it into a list of TAC instructions.
@@ -18,14 +20,23 @@ public:
     using UPtr = std::unique_ptr< IntermediateCode >;
     using Instructions = std::vector< TAC::ThreeAddrInstruction::Ptr >;
 
-    IntermediateCode( AstNode::Ptr abstractSyntaxTree );
+    IntermediateCode() = default;
 
-    Instructions GenerateIntermediateCode();
+    Instructions GenerateIntermediateCode( AstNode::Ptr astNode );
 
-protected:
-    // Stored Abstract Syntax Tree, to convert into TAC instructions
-    AstNode::Ptr m_ast;
+private:
+    void ConvertAstToInstructions( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
 
-    // Generated instructions list - is stored internally and updated as the AST is traversed.
-    Instructions m_instructions;
+    void ConvertAssign( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    std::string GetIdentifierFromLhsNode( AstNode::Ptr lhsNode );
+
+    using ExpressionInfo = std::tuple< TAC::Opcode, TAC::Operand, TAC::Operand >;
+    ExpressionInfo ResolveExpression( AstNode::Ptr expressionNode, Instructions& preInstructions );
+
+    void ConvertIfElse( AstNode::Ptr astNode, Instructions& instructions );
+    void ConvertForLoop( AstNode::Ptr astNode, Instructions& instructions );
+    void ConvertWhileLoop( AstNode::Ptr astNode, Instructions& instructions );
+
+    // Storage of any replaced const identifiers that were holding a byte value.
+    std::unordered_map< std::string, uint8_t > m_replacedIdentifiers;
 };
