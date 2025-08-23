@@ -191,13 +191,10 @@ BOOST_AUTO_TEST_CASE( AstHasNoSymbols )
 
     Token::Ptr fakeToken = std::make_shared< Token >( TokenType::INVALID_TOKEN );
 
-    AstNode::Ptr scopeNode = CreateScopedNodeFromChildren(
-        {
-            std::make_shared< AstNode >( T::BYTE, fakeToken ),
-            std::make_shared< AstNode >( T::AND, fakeToken ),
-            std::make_shared< AstNode >( NT::For_init, fakeToken )
-        }
-    );
+    AstNode::Children children{ std::make_shared< AstNode >( T::BYTE, fakeToken ),
+                                std::make_shared< AstNode >( T::AND, fakeToken ),
+                                std::make_shared< AstNode >( NT::For_init, fakeToken ) };
+    AstNode::Ptr scopeNode = std::make_shared< AstNode >( NT::Block, children );
 
     constexpr size_t expectedNumEntries{ 0u };
     SymbolTable::Ptr table = GenerateTableAndValidate( scopeNode, expectedNumEntries );
@@ -257,8 +254,9 @@ BOOST_AUTO_TEST_CASE( Identifier_ReadFrom )
     constexpr bool isNewVariable2{ true };
     AstNode::Ptr assignNode2 = CreateAssignNodeFromVar( varName2, isNewVariable2, varName );
 
-    // Create scope node to hold both assignment statements.
-    AstNode::Ptr scopeNode = CreateScopedNodeFromChildren( { assignNode1, assignNode2 } );
+    // Create node to hold both assignment statements.
+    AstNode::Children children{ assignNode1, assignNode2 };
+    AstNode::Ptr scopeNode = std::make_shared< AstNode >( NT::Block, children );
 
     // Expect two entries as 2 vars were declared.
     constexpr size_t expectedNumEntries{ 2u };
@@ -293,8 +291,9 @@ BOOST_AUTO_TEST_CASE( SingleIdentifier_WrittenTo )
     constexpr bool isNewVariable2{ false };
     AstNode::Ptr assignNode2 = CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
 
-    // Create scope node to hold both assignment statements.
-    AstNode::Ptr scopeNode = CreateScopedNodeFromChildren( { assignNode1, assignNode2 } );
+    // Create node to hold both assignment statements.
+    AstNode::Children children{ assignNode1, assignNode2 };
+    AstNode::Ptr scopeNode = std::make_shared< AstNode >( NT::Block, children );
 
     constexpr size_t expectedNumEntries{ 1u };
     SymbolTable::Ptr table = GenerateTableAndValidate( scopeNode, expectedNumEntries );
@@ -327,8 +326,9 @@ BOOST_AUTO_TEST_CASE( Identifier_ReadFromAndWrittenTo )
     constexpr bool isNewVariable3{ true };
     AstNode::Ptr assignNode3 = CreateAssignNodeFromVar( varName2, isNewVariable3, varName1 );
 
-    // Create scope node to hold all assignment statements.
-    AstNode::Ptr scopeNode = CreateScopedNodeFromChildren( { assignNode1, assignNode2, assignNode3 } );
+    // Create node to hold all assignment statements.
+    AstNode::Children children{ assignNode1, assignNode2, assignNode3 };
+    AstNode::Ptr scopeNode = std::make_shared< AstNode >( NT::Block, children );
 
     constexpr size_t expectedNumEntries{ 2u };
     SymbolTable::Ptr table = GenerateTableAndValidate( scopeNode, expectedNumEntries );
@@ -352,17 +352,20 @@ BOOST_AUTO_TEST_SUITE( MultiScopeTests )
  */
 BOOST_AUTO_TEST_CASE( NestedScopeCreatesNewTable )
 {
-    // Create dummy child scope node to test a new table is created.
+    // Create fake child scope-defining node to test a new table is created.
+    constexpr TokenType scopeDefiningTokenType{ TokenType::WHILE };
     Token::Ptr fakeToken = std::make_shared< Token >( TokenType::INVALID_TOKEN );
-    AstNode::Ptr fakeNode = std::make_shared< AstNode >( TokenType::INVALID_TOKEN, fakeToken );
+    AstNode::Ptr fakeTokenWrapper = std::make_shared< AstNode >( TokenType::AND, fakeToken );
+    AstNode::Children scopeChildren{ fakeTokenWrapper };
+    AstNode::Ptr childNode = std::make_shared< AstNode >( scopeDefiningTokenType, scopeChildren );
 
-    AstNode::Ptr childScope = CreateScopedNodeFromChildren( { fakeNode } );
-    AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { childScope } );
+    AstNode::Children children{ childNode };
+    AstNode::Ptr parentNode = std::make_shared< AstNode >( NT::Block, children );
 
     constexpr size_t expectedNumEntries{ 0u };
-    SymbolTable::Ptr parentTable = GenerateTableAndValidate( parentScope, expectedNumEntries );
+    SymbolTable::Ptr parentTable = GenerateTableAndValidate( parentNode, expectedNumEntries );
 
-    SymbolTable::Ptr childTable = childScope->m_symbolTable;
+    SymbolTable::Ptr childTable = childNode->m_symbolTable;
     BOOST_REQUIRE_NE( nullptr, childTable );
     BOOST_CHECK_EQUAL( 0u, childTable->GetNumEntries() );
 }
@@ -384,8 +387,12 @@ BOOST_AUTO_TEST_CASE( VarReferencesInNestedScope )
     constexpr bool isNewVariable2{ false };
     AstNode::Ptr assignNode = CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
 
-    AstNode::Ptr childScope = CreateScopedNodeFromChildren( { assignNode } );
-    AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { declarationNode, childScope } );
+    constexpr TokenType scopeDefiningTokenType{ TokenType::IF };
+    AstNode::Children childScopeChildren{ assignNode };
+    AstNode::Ptr childScope = std::make_shared< AstNode >( scopeDefiningTokenType, childScopeChildren );
+
+    AstNode::Children parentScopeChildren{ declarationNode, childScope };
+    AstNode::Ptr parentScope = std::make_shared< AstNode >( NT::Block, parentScopeChildren );
 
     constexpr size_t expectedNumParentEntries{ 1u };
     SymbolTable::Ptr parentTable = GenerateTableAndValidate( parentScope, expectedNumParentEntries );
@@ -407,6 +414,8 @@ BOOST_AUTO_TEST_CASE( SiblingScopesSameIdentifier )
 {
     std::string varName = "foo";
 
+    constexpr TokenType scopeDefiningTokenType{ TokenType::FOR };
+
     // Scope 1:
     // Declare identifier and then write to it.
     constexpr uint8_t numValue{ 5u };
@@ -417,18 +426,21 @@ BOOST_AUTO_TEST_CASE( SiblingScopesSameIdentifier )
     constexpr bool isNewVariable2{ false };
     AstNode::Ptr assignNode = CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
 
-    AstNode::Ptr scope1 = CreateScopedNodeFromChildren( { declarationNode, assignNode } );
+    AstNode::Children scope1Children{ declarationNode, assignNode };
+    AstNode::Ptr scope1 = std::make_shared< AstNode >( scopeDefiningTokenType, scope1Children );
 
-    // Scope 1:
+    // Scope 2:
     // Declare identifier, and do not reference it.
     constexpr uint8_t numValue3{ 1u };
     constexpr bool isNewVariable3{ true };
     AstNode::Ptr declarationNode2 = CreateAssignNodeFromByteValue( varName, isNewVariable3, numValue3 );
 
-    AstNode::Ptr scope2 = CreateScopedNodeFromChildren( { declarationNode2 } );
+    AstNode::Children scope2Children{ declarationNode2 };
+    AstNode::Ptr scope2 = std::make_shared< AstNode >( scopeDefiningTokenType, scope2Children );
 
     // Parent scope containing both sibling scopes
-    AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { scope1, scope2 } );
+    AstNode::Children parentChildren{ scope1, scope2 };
+    AstNode::Ptr parentScope = std::make_shared< AstNode >( NT::Block, parentChildren );
 
     constexpr size_t expectedNumParentEntries{ 0u };
     SymbolTable::Ptr parentTable = GenerateTableAndValidate( parentScope, expectedNumParentEntries );
@@ -469,9 +481,17 @@ BOOST_AUTO_TEST_CASE( GrandchildNestedScope )
     AstNode::Ptr assignNode = CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
 
     // Populate scopes
-    AstNode::Ptr grandchildScope = CreateScopedNodeFromChildren( { assignNode } );
-    AstNode::Ptr childScope = CreateScopedNodeFromChildren( { grandchildScope } );
-    AstNode::Ptr parentScope = CreateScopedNodeFromChildren( { declarationNode, childScope } );
+    AstNode::Children grandchildScopeChildren{ assignNode };
+    constexpr TokenType scopeDefiningTokenType1{ TokenType::FOR };
+    AstNode::Ptr grandchildScope = std::make_shared< AstNode >( scopeDefiningTokenType1, grandchildScopeChildren );
+
+    AstNode::Children childScopeChildren{ grandchildScope };
+    constexpr TokenType scopeDefiningTokenType2{ TokenType::WHILE };
+    AstNode::Ptr childScope = std::make_shared< AstNode >( scopeDefiningTokenType2, childScopeChildren );
+
+    AstNode::Children parentScopeChildren{ declarationNode, childScope };
+    constexpr TokenType scopeDefiningTokenType3{ TokenType::IF };
+    AstNode::Ptr parentScope = std::make_shared< AstNode >( scopeDefiningTokenType3, parentScopeChildren );
 
     // Expect the entry to belong to the parent table as it was declared in that scope.
     constexpr size_t expectedNumParentEntries{ 1u };
@@ -494,5 +514,55 @@ BOOST_AUTO_TEST_CASE( GrandchildNestedScope )
 }
 
 BOOST_AUTO_TEST_SUITE_END() // MultiScopeTests
+
+BOOST_AUTO_TEST_SUITE( RealExamples )
+
+/**
+ * Tests that symbol tables can be correctly generated for a small example program starting with symbol "Block", and
+ * containing a while loop with a scope.
+ */
+BOOST_AUTO_TEST_CASE( StartingSymbolBlock_WhileLoop )
+{
+    /**
+     * Create program with a while loop (condition = 1), with an inside-scope var declaration, and an outside-scope
+     * var declaration.
+     */
+
+    // Create first declaration statement.
+    std::string insideScopeVar = "insideScope";
+    constexpr uint8_t insideScopeValue{ 5u };
+    constexpr bool insideScope_IsNewVariable{ true };
+    AstNode::Ptr insideScopeAssign = CreateAssignNodeFromByteValue( insideScopeVar,
+                                                                    insideScopeValue,
+                                                                    insideScope_IsNewVariable );
+
+    Token::Ptr conditionByteToken = std::make_shared< Token >( TokenType::BYTE, 1u );
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( TokenType::BYTE, conditionByteToken );
+
+    AstNode::Children whileChildren = { conditionNode, insideScopeAssign };
+    AstNode::Ptr whileNode = std::make_shared< AstNode >( TokenType::WHILE, whileChildren );
+
+    // Create second, outside-scope declaration statement.
+    std::string outsideScopeVar = "outsideScope";
+    constexpr uint8_t outsideScopeValue{ 10u };
+    constexpr bool outsideScope_IsNewVariable{ true };
+    AstNode::Ptr outsideScopeAssign = CreateAssignNodeFromByteValue( outsideScopeVar,
+                                                                     outsideScopeValue,
+                                                                     outsideScope_IsNewVariable );
+
+    AstNode::Children blockChildren{ whileNode, outsideScopeAssign};
+    AstNode::Ptr blockNode = std::make_shared< AstNode >( NT::Block, blockChildren );
+
+    constexpr size_t expectedBlockTableSize{ 1u };
+    SymbolTable::Ptr blockSt = GenerateTableAndValidate( blockNode, expectedBlockTableSize );
+    CheckForByteEntry( blockSt, outsideScopeVar, false, false );
+
+    SymbolTable::Ptr whileSt = whileNode->m_symbolTable;
+    BOOST_REQUIRE_NE( nullptr, whileSt );
+    BOOST_REQUIRE_EQUAL( 1u, whileSt->GetNumEntries() );
+    CheckForByteEntry( whileSt, insideScopeVar, false, false );
+}
+
+BOOST_AUTO_TEST_SUITE_END() // RealExamples
 
 BOOST_AUTO_TEST_SUITE_END() // SymbolTableGeneratorTests

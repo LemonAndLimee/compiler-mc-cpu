@@ -121,6 +121,13 @@ namespace GrammarSymbols
         SEMICOLON
     };
 
+    // Symbols that represent a new scope if they are the label of an AST node.
+    const std::unordered_set< Symbol > g_scopeDefiningSymbols {
+        IF,
+        FOR,
+        WHILE
+    };
+
     // Human-readable string forms of non-terminal symbols
     const std::unordered_map< NT, std::string > g_nonTerminalStringForms {
         { Block , "Block" },

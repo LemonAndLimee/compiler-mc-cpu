@@ -155,9 +155,14 @@ AstNode::IsScopeDefiningNode()
         return false;
     }
 
-    // Only scope blocks are considered as a new scope - the condition parts for if statements and loops are considered
-    // part of the parent scope.
-    return Scoped_block == m_nodeLabel;
+    // Return true if node represents a scope-defining operation. Note that NT rule symbols are not considered here
+    // as they will either be optimised out during AST generation or do not count e.g. Block.
+    if ( g_scopeDefiningSymbols.end() != g_scopeDefiningSymbols.find( m_nodeLabel ) )
+    {
+        return true;
+    }
+
+    return false;
 }
 
 /**
