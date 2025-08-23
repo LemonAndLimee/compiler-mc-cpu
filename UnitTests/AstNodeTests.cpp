@@ -1,8 +1,6 @@
 #include <boost/test/unit_test.hpp>
 #include "AstNode.h"
 
-BOOST_AUTO_TEST_SUITE( AstNodeTests )
-
 class AstNodeTestsFixture
 {
 public:
@@ -18,7 +16,7 @@ public:
     CreateFakeAstNode()
     {
         GrammarSymbols::Symbol fakeLabel { T::PLUS };
-        std::vector< AstNode::Ptr > fakeChildren;
+        AstNode::Children fakeChildren;
         return std::make_shared< AstNode >( fakeLabel, fakeChildren );
     }
 
@@ -30,20 +28,22 @@ public:
     CheckNodeIsStoringToken( AstNode::Ptr node, Token::Ptr token )
     {
         BOOST_CHECK_EQUAL( true, node->IsStorageInUse() );
-        BOOST_CHECK( std::holds_alternative< Token::Ptr >( node->m_storage ) );
-        BOOST_CHECK_EQUAL( token.get(), std::get< Token::Ptr >( node->m_storage ).get() );
+        BOOST_CHECK( node->IsStoringToken() );
+        BOOST_CHECK_EQUAL( token.get(), node->GetToken().get() );
     }
 
     void
     CheckNodeIsStoringChildren( AstNode::Ptr node, size_t expectedNumChildren )
     {
         BOOST_CHECK_EQUAL( true, node->IsStorageInUse() );
-        BOOST_CHECK( std::holds_alternative< AstNode::Children >( node->m_storage ) );
-        BOOST_CHECK_EQUAL( expectedNumChildren, std::get< AstNode::Children >( node->m_storage ).size() );
+        BOOST_CHECK( !node->IsStoringToken() );
+        BOOST_CHECK_EQUAL( expectedNumChildren, node->GetChildren().size() );
     }
 };
 
-BOOST_FIXTURE_TEST_SUITE( GetNodeFromRuleElementsTests, AstNodeTestsFixture )
+BOOST_FIXTURE_TEST_SUITE( AstNodeTests, AstNodeTestsFixture )
+
+BOOST_AUTO_TEST_SUITE( GetNodeFromRuleElementsTests )
 
 /**
  * Tests that when GetNodeFromRuleElements is called with an empty elements container, it throws an exception.
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_SingleTerminalNodeLabel )
     // Expect the children to contain the created AST nodes + a wrapper AST node around the regular token
     constexpr size_t expectedChildrenSize{ 3u };
     CheckNodeIsStoringChildren( returnedNode, expectedChildrenSize );
-    AstNode::Children returnedChildren = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children returnedChildren = returnedNode->GetChildren();
 
     BOOST_CHECK_EQUAL( fakeAstNode1.get(), returnedChildren[0].get() );
     BOOST_CHECK_EQUAL( fakeAstNode2.get(), returnedChildren[1].get() );
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
     // Expect the children to contain the created AST nodes + a wrapper AST node around the regular token
     constexpr size_t expectedChildrenSize{ 3u };
     CheckNodeIsStoringChildren( returnedNode, expectedChildrenSize );
-    AstNode::Children returnedChildren = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children returnedChildren = returnedNode->GetChildren();
 
     BOOST_CHECK_EQUAL( fakeAstNode1.get(), returnedChildren[0].get() );
     BOOST_CHECK_EQUAL( fakeAstNode2.get(), returnedChildren[1].get() );
@@ -242,5 +242,87 @@ BOOST_AUTO_TEST_CASE( MultipleChildren_NoNodeLabel )
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GetNodeFromRuleElementsTests
+
+/**
+ * Tests that method GetChildren() will throw an error if the node is storing a token.
+ */
+BOOST_AUTO_TEST_CASE( GetChildren_IsStoringToken )
+{
+    // Create node that is storing a token
+    constexpr TokenType tokenType{ T::AND };
+    Token::Ptr storedToken = std::make_shared< Token >( tokenType );
+    AstNode::Ptr node = std::make_shared< AstNode >( tokenType, storedToken );
+
+    BOOST_CHECK_THROW( node->GetChildren(), std::invalid_argument );
+}
+
+/**
+ * Tests that method GetChildren() will throw an error if the node is storing an empty children vector.
+ */
+BOOST_AUTO_TEST_CASE( GetChildren_StorageNotInUse )
+{
+    // Create node that is storing an empty children vector.
+    constexpr GrammarSymbols::Symbol nodeLabel{ NT::Block };
+    AstNode::Children children{};
+    AstNode::Ptr node = std::make_shared< AstNode >( nodeLabel, children );
+
+    BOOST_CHECK_THROW( node->GetChildren(), std::runtime_error );
+}
+
+/**
+ * Tests that method GetChildren() will successfully return the stored children if they exist.
+ */
+BOOST_AUTO_TEST_CASE( GetChildren_Success )
+{
+    // Create node that is storing children.
+    constexpr GrammarSymbols::Symbol nodeLabel{ NT::Block };
+    AstNode::Ptr fakeChild = CreateFakeAstNode();
+    AstNode::Children children{ fakeChild };
+    AstNode::Ptr node = std::make_shared< AstNode >( nodeLabel, children );
+
+    AstNode::Children returnedChildren = node->GetChildren();
+    BOOST_REQUIRE_EQUAL( 1u, returnedChildren.size() );
+    BOOST_CHECK_EQUAL( fakeChild.get(), returnedChildren[0].get() );
+}
+
+/**
+ * Tests that method GetToken() will throw an error if the node is storing children.
+ */
+BOOST_AUTO_TEST_CASE( GetToken_IsStoringChildren )
+{
+    // Create node that is storing children.
+    constexpr GrammarSymbols::Symbol nodeLabel{ NT::Block };
+    AstNode::Ptr fakeChild = CreateFakeAstNode();
+    AstNode::Children children{ fakeChild };
+    AstNode::Ptr node = std::make_shared< AstNode >( nodeLabel, children );
+
+    BOOST_CHECK_THROW( node->GetToken(), std::invalid_argument );
+}
+
+/**
+ * Tests that method GetToken() will throw an error if the node is storing an nullptr token.
+ */
+BOOST_AUTO_TEST_CASE( GetToken_StorageNotInUse )
+{
+    // Create node that is storing a nullptr token
+    constexpr TokenType tokenType{ T::AND };
+    AstNode::Ptr node = std::make_shared< AstNode >( tokenType, nullptr );
+
+    BOOST_CHECK_THROW( node->GetToken(), std::runtime_error );
+}
+
+/**
+ * Tests that method GetToken() will successfully return the stored token if it exists.
+ */
+BOOST_AUTO_TEST_CASE( GetToken_Success )
+{
+    // Create node that is storing a token
+    constexpr TokenType tokenType{ T::AND };
+    Token::Ptr storedToken = std::make_shared< Token >( tokenType );
+    AstNode::Ptr node = std::make_shared< AstNode >( tokenType, storedToken );
+
+    Token::Ptr returnedToken = node->GetToken();
+    BOOST_CHECK_EQUAL( storedToken.get(), returnedToken.get() );
+}
 
 BOOST_AUTO_TEST_SUITE_END() // AstNodeTests

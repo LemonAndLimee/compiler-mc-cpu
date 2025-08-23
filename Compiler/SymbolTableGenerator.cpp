@@ -68,7 +68,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
         // child nodes.
         LOG_ERROR_AND_THROW( "Unexpected lack of children for a scope-defining AST node.", std::runtime_error );
     }
-    AstNode::Children children = std::get< AstNode::Children >( parentNode->m_storage );
+    AstNode::Children children = parentNode->GetChildren();
 
     // If child is an identifier, locate existing entry or create new one
     // If child is a scope node, generate new table for this child
@@ -85,7 +85,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
             {
                 if ( TokenType::IDENTIFIER == child->m_nodeLabel )
                 {
-                    std::string identifier = std::get< Token::Ptr>( child->m_storage )->m_value->m_value.stringValue;
+                    std::string identifier = child->GetToken()->m_value->m_value.stringValue;
                     SymbolTableEntry::Ptr entry = table->GetEntryIfExists( identifier );
                     // If on left side of assignment, it's a write operation
                     if ( TokenType::ASSIGN == parentNode->m_nodeLabel && 0u == i )
@@ -118,7 +118,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
             // Else if child is holding a "variable" rule (it still represents a single identifier)
             else if ( NT::Variable == child->m_nodeLabel )
             {
-                AstNode::Children variableChildren = std::get< AstNode::Children >( child->m_storage );
+                AstNode::Children variableChildren = child->GetChildren();
                 // Get rightmost child to get identifier node. With two children this should be 2.
                 if ( 2u != variableChildren.size() )
                 {
@@ -126,7 +126,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
                                          + std::to_string( variableChildren.size() ), std::runtime_error );
                 }
                 AstNode::Ptr idNode = variableChildren[1];
-                std::string identifier = std::get< Token::Ptr>( idNode->m_storage )->m_value->m_value.stringValue;
+                std::string identifier = idNode->GetToken()->m_value->m_value.stringValue;
 
                 // Expect no existing entry as it is being declared
                 SymbolTableEntry::Ptr entry = table->GetEntryIfExists( identifier );
@@ -138,7 +138,7 @@ SymbolTableGenerator::PopulateTableFromSubTree(
 
                 // Create new entry and add to table
                 AstNode::Ptr dataTypeNode = variableChildren[0];
-                DataType dataType = std::get< Token::Ptr>( dataTypeNode->m_storage )->m_value->m_value.dataTypeValue;
+                DataType dataType = dataTypeNode->GetToken()->m_value->m_value.dataTypeValue;
 
                 entry = std::make_shared< SymbolTableEntry >();
                 entry->dataType = dataType;

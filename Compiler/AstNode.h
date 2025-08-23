@@ -40,6 +40,9 @@ public:
     bool IsStorageInUse();
     bool IsStoringToken();
 
+    AstNode::Children GetChildren(); // TODO unit test
+    Token::Ptr GetToken(); // TODO unit test
+
     bool IsScopeDefiningNode();
 
     // Describes the relationship of the node, i.e. how its children relate to each other.

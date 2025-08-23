@@ -14,9 +14,9 @@ public:
     CheckNodeIsTokenWrapper( AstNode::Ptr node, Token::Ptr token )
     {
         BOOST_CHECK_EQUAL( token->m_type, node->m_nodeLabel );
-        BOOST_REQUIRE( node->IsStorageInUse() );
         BOOST_REQUIRE( node->IsStoringToken() );
-        Token::Ptr nodeToken = std::get< Token::Ptr >( node->m_storage );
+        BOOST_REQUIRE( node->IsStorageInUse() );
+        Token::Ptr nodeToken = node->GetToken();
         BOOST_CHECK( *token.get() == *nodeToken.get() );
     }
 };
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
 
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children children = returnedNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, children.size() );
 
     // Check first child holds the first ID token
@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_WhileLoop )
     // Check is storing 2 children
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children children = returnedNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, children.size() );
 
     // Expect first child to be storing a BYTE token
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_WhileLoop )
     BOOST_CHECK_EQUAL( TokenType::ASSIGN, assignNode->m_nodeLabel );
     BOOST_CHECK( assignNode->IsStorageInUse() );
     BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
+    AstNode::Children assignChildren = assignNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
 
     // Expect first child of the assign node to be a Variable node, holding 2 wrapper nodes around the
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_WhileLoop )
     BOOST_CHECK_EQUAL( NT::Variable, variableNode->m_nodeLabel );
     BOOST_CHECK( variableNode->IsStorageInUse() );
     BOOST_CHECK( !variableNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children variableChildren = std::get< AstNode::Children >( variableNode->m_storage );
+    AstNode::Children variableChildren = variableNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, variableChildren.size() );
 
     AstNode::Ptr variableChild1 = variableChildren[0];
@@ -377,7 +377,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
     // Check is storing 3 children
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children children = returnedNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 3u, children.size() );
 
     // Expect first child to be storing a BYTE token
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
         BOOST_CHECK_EQUAL( TokenType::ASSIGN, assignNode->m_nodeLabel );
         BOOST_CHECK( assignNode->IsStorageInUse() );
         BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
-        AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
+        AstNode::Children assignChildren = assignNode->GetChildren();
         BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
 
         // Expect first child of the assign node to be an ID node, holding 2 wrapper nodes around the
@@ -409,7 +409,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
         BOOST_CHECK_EQUAL( TokenType::ELSE, elseNode->m_nodeLabel );
         BOOST_CHECK( elseNode->IsStorageInUse() );
         BOOST_CHECK( !elseNode->IsStoringToken() ); // Expect it to be storing children
-        AstNode::Children elseChildren = std::get< AstNode::Children >( elseNode->m_storage );
+        AstNode::Children elseChildren = elseNode->GetChildren();
         BOOST_REQUIRE_EQUAL( 1u, elseChildren.size() );
 
         {
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( MultipleSubTrees_IfElse )
             BOOST_CHECK_EQUAL( TokenType::ASSIGN, assignNode->m_nodeLabel );
             BOOST_CHECK( assignNode->IsStorageInUse() );
             BOOST_CHECK( !assignNode->IsStoringToken() ); // Expect it to be storing children
-            AstNode::Children assignChildren = std::get< AstNode::Children >( assignNode->m_storage );
+            AstNode::Children assignChildren = assignNode->GetChildren();
             BOOST_REQUIRE_EQUAL( 2u, assignChildren.size() );
 
             // Expect first child of the assign node to be an ID node, holding 2 wrapper nodes around the
@@ -482,7 +482,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperators_NoParentheses )
 
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children children = returnedNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, children.size() );
 
     // Check first child holds the first byte token
@@ -494,7 +494,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperators_NoParentheses )
     BOOST_CHECK_EQUAL( TokenType::MULTIPLY, child2->m_nodeLabel );
     BOOST_CHECK( child2->IsStorageInUse() );
     BOOST_CHECK( !child2->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children multiplyChildren = std::get< AstNode::Children >( child2->m_storage );
+    AstNode::Children multiplyChildren = child2->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, multiplyChildren.size() );
 
     AstNode::Ptr multiplyChild1 = multiplyChildren[0];
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperators_ParenthesesSetNewOrder )
 
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+    AstNode::Children children = returnedNode->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, children.size() );
 
     // Check first child holds a subtree for the plus operator
@@ -550,7 +550,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperators_ParenthesesSetNewOrder )
     BOOST_CHECK_EQUAL( TokenType::PLUS, child1->m_nodeLabel );
     BOOST_CHECK( child1->IsStorageInUse() );
     BOOST_CHECK( !child1->IsStoringToken() ); // Expect it to be storing children
-    AstNode::Children plusChildren = std::get< AstNode::Children >( child1->m_storage );
+    AstNode::Children plusChildren = child1->GetChildren();
     BOOST_REQUIRE_EQUAL( 2u, plusChildren.size() );
 
     AstNode::Ptr plusChild1 = plusChildren[0];
@@ -631,7 +631,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperatorsAtSameLevel_NoParentheses )
 
      BOOST_CHECK( returnedNode->IsStorageInUse() );
      BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
-     AstNode::Children children = std::get< AstNode::Children >( returnedNode->m_storage );
+     AstNode::Children children = returnedNode->GetChildren();
      BOOST_REQUIRE_EQUAL( 2u, children.size() );
 
      // Check first child holds a subtree for the plus operator
@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE( MultipleOperatorsAtSameLevel_NoParentheses )
      BOOST_CHECK_EQUAL( TokenType::PLUS, child1->m_nodeLabel );
      BOOST_CHECK( child1->IsStorageInUse() );
      BOOST_CHECK( !child1->IsStoringToken() ); // Expect it to be storing children
-     AstNode::Children plusChildren = std::get< AstNode::Children >( child1->m_storage );
+     AstNode::Children plusChildren = child1->GetChildren();
      BOOST_REQUIRE_EQUAL( 2u, plusChildren.size() );
 
      AstNode::Ptr plusChild1 = plusChildren[0];

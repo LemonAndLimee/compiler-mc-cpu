@@ -150,7 +150,7 @@ bool
 AstNode::IsScopeDefiningNode()
 {
     // If not storing anything, or storing token, this is not a scope-defining node.
-    if ( !IsStorageInUse() || IsStoringToken() )
+    if ( IsStoringToken() ||!IsStorageInUse() )
     {
         return false;
     }
@@ -158,4 +158,46 @@ AstNode::IsScopeDefiningNode()
     // Only scope blocks are considered as a new scope - the condition parts for if statements and loops are considered
     // part of the parent scope.
     return Scoped_block == m_nodeLabel;
+}
+
+/**
+ * \brief  Returns stored child nodes. Throws if this node is not storing children.
+ *
+ * \return  Children container.
+ */
+AstNode::Children
+AstNode::GetChildren()
+{
+    if ( IsStoringToken() )
+    {
+        LOG_ERROR_AND_THROW( "Cannot get children for node that is storing token.", std::invalid_argument );
+    }
+
+    AstNode::Children children = std::get< Children >( m_storage );
+    if ( children.empty() )
+    {
+        LOG_ERROR_AND_THROW( "Children not in use.", std::runtime_error );
+    }
+    return children;
+}
+
+/**
+ * \brief  Returns stored token. Throws if this node is not storing a token.
+ *
+ * \return  Stored token pointer.
+ */
+Token::Ptr
+AstNode::GetToken()
+{
+    if ( !IsStoringToken() )
+    {
+        LOG_ERROR_AND_THROW( "Cannot get token for node that is storing children.", std::invalid_argument );
+    }
+
+    Token::Ptr token = std::get< Token::Ptr >( m_storage );
+    if ( nullptr == token )
+    {
+        LOG_ERROR_AND_THROW( "Token not in use.", std::runtime_error );
+    }
+    return token;
 }
