@@ -10,6 +10,8 @@
 
 #include <tuple>
 
+using namespace TAC;
+
 /**
  * \brief  Class responsible for traversing an abstract syntax tree and converting it into a list of three-address code
  *         instructions. This is a higher level organisation class, and delegates any complex cases that need new
@@ -37,11 +39,11 @@ private:
 
     std::string CalculateUniqueIdentifier( const std::string& currentIdentifier, SymbolTable::Ptr symbolTable );
 
-    using ExpressionInfo = std::tuple< TAC::Opcode, TAC::Operand, TAC::Operand >;
+    using ExpressionInfo = std::tuple< Opcode, Operand, Operand >;
     ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode,
                                       SymbolTable::Ptr currentSt,
                                       Instructions& preInstructions );
-    TAC::Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
+    Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
 
     std::string GetNewTempVar();
 

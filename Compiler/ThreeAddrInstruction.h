@@ -10,6 +10,9 @@
 namespace TAC
 {
 
+// Data type to represent a literal numeric value - in this case a byte.
+using Literal = uint8_t;
+
 // Opcodes of the intermediate representation - this is similar to the target assembly language, but removes the
 // concept of load-store, as this is a level higher.
 enum Opcode
@@ -39,7 +42,7 @@ std::unordered_map< GrammarSymbols::Symbol, Opcode > g_symbolsToOpcodesMap{
 };
 
 // Operand can either be a string identifier/label, or a numeric value (or can be empty i.e. monostate)
-using Operand = std::variant< std::monostate, std::string, uint8_t >;
+using Operand = std::variant< std::monostate, std::string, Literal >;
 
 /**
  * \brief  Represents an instruction in three-address code. Stores the result of an operation, the operation type,

@@ -154,11 +154,11 @@ IntermediateCode::ConvertAssign(
 
 
     // Create assignment statement from the expression info, targeting the LHS identifier.
-    TAC::Opcode opcode = std::get< TAC::Opcode >( expressionInfo );
-    TAC::Operand operand1 = std::get< 1 >( expressionInfo );
-    TAC::Operand operand2 = std::get< 2 >( expressionInfo );
+    Opcode opcode = std::get< Opcode >( expressionInfo );
+    Operand operand1 = std::get< 1 >( expressionInfo );
+    Operand operand2 = std::get< 2 >( expressionInfo );
 
-    instructions.push_back( std::make_shared< TAC::ThreeAddrInstruction >( uniqueLhsId, opcode, operand1, operand2 ) );
+    instructions.push_back( std::make_shared< ThreeAddrInstruction >( uniqueLhsId, opcode, operand1, operand2 ) );
 }
 
 /**
@@ -193,12 +193,10 @@ IntermediateCode::GetIdentifierFromLhsNode(
         }
         return varChildren[1]->GetToken()->m_value->m_value.stringValue;
     }
-    else
-    {
-        LOG_ERROR_AND_THROW( "Unrecognised LHS node label: "
-                             + GrammarSymbols::ConvertSymbolToString( lhsNode->m_nodeLabel ),
-                             std::invalid_argument );
-    }
+    LOG_ERROR_AND_THROW( "Unrecognised LHS node label: "
+                         + GrammarSymbols::ConvertSymbolToString( lhsNode->m_nodeLabel ),
+                         std::invalid_argument );
+    return ""; // Added to satisfy compiler, will never be reached due to exception
 }
 
 /**
@@ -246,9 +244,9 @@ IntermediateCode::GetExpressionInfo(
     Instructions& preInstructions
 )
 {
-    TAC::Opcode opcode{ TAC::Opcode::UNUSED };
-    TAC::Operand operand1{};
-    TAC::Operand operand2{};
+    Opcode opcode{ Opcode::UNUSED };
+    Operand operand1{};
+    Operand operand2{};
 
     GrammarSymbols::Symbol nodeLabel = expressionNode->m_nodeLabel;
 
@@ -268,19 +266,19 @@ IntermediateCode::GetExpressionInfo(
         // First resolve the operands themselves, as they may need prerequisite instructions
         AstNode::Children children = expressionNode->GetChildren();
         ExpressionInfo lhsInfo = GetExpressionInfo( children[0], currentSt, preInstructions );
-        TAC::Operand lhs = GetOperandFromExpressionInfo( lhsInfo, preInstructions );
+        Operand lhs = GetOperandFromExpressionInfo( lhsInfo, preInstructions );
 
-        TAC::Operand rhs;
+        Operand rhs;
         if ( 2u == children.size() )
         {
             ExpressionInfo rhsInfo = GetExpressionInfo( children[1], currentSt, preInstructions );
-            TAC::Operand rhs = GetOperandFromExpressionInfo( rhsInfo, preInstructions );
+            Operand rhs = GetOperandFromExpressionInfo( rhsInfo, preInstructions );
         }
 
         // For opcodes that directly map e.g. ADD, this is more simple
-        if ( TAC::g_symbolsToOpcodesMap.end() != TAC::g_symbolsToOpcodesMap.find( nodeLabel ) )
+        if ( g_symbolsToOpcodesMap.end() != g_symbolsToOpcodesMap.find( nodeLabel ) )
         {
-            opcode = TAC::g_symbolsToOpcodesMap[nodeLabel];
+            opcode = g_symbolsToOpcodesMap[nodeLabel];
             operand1 = lhs;
             operand2 = rhs;
         }
@@ -325,18 +323,18 @@ IntermediateCode::GetExpressionInfo(
  *
  * \return  Expression info tuple containing the opcode and operand(s).
  */
-TAC::Operand
+Operand
 IntermediateCode::GetOperandFromExpressionInfo(
     ExpressionInfo info,
     Instructions& instructions
 )
 {
-    TAC::Opcode opcode = std::get< TAC::Opcode >( info );
-    TAC::Operand operand1 = std::get< 1 >( info );
-    TAC::Operand operand2 = std::get< 2 >( info );
+    Opcode opcode = std::get< Opcode >( info );
+    Operand operand1 = std::get< 1 >( info );
+    Operand operand2 = std::get< 2 >( info );
 
     // If opcode isn't being used, it represents only a single value and should therefore be storing 1 operand only.
-    if ( TAC::Opcode::UNUSED == opcode )
+    if ( Opcode::UNUSED == opcode )
     {
         if ( std::holds_alternative< std::monostate >( operand1 ) || !std::holds_alternative< std::monostate >( operand2 ) )
         {
@@ -348,8 +346,8 @@ IntermediateCode::GetOperandFromExpressionInfo(
     // If opcode is being used, we need to create an assignment instruction for a temporary variable, which will then
     // become the returned operand.
     std::string tempVarId = GetNewTempVar();
-    TAC::ThreeAddrInstruction::Ptr instruction
-        = std::make_shared< TAC::ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
+    ThreeAddrInstruction::Ptr instruction
+        = std::make_shared< ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
     instructions.push_back( instruction );
     return tempVarId;
 }
