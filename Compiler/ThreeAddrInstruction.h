@@ -82,4 +82,5 @@ struct ThreeAddrInstruction
     std::string m_label;
 };
 
+using Instructions = std::vector< ThreeAddrInstruction::Ptr >;
 }

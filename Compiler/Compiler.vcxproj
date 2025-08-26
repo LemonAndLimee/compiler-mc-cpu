@@ -157,6 +157,7 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="SymbolTable.cpp" />
     <ClCompile Include="SymbolTableGenerator.cpp" />
+    <ClCompile Include="TacGenerator.cpp" />
     <ClCompile Include="Token.cpp" />
     <ClCompile Include="Tokeniser.cpp" />
     <ClCompile Include="TokenTypes.cpp" />

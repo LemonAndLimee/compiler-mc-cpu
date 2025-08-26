@@ -7,8 +7,7 @@
 IntermediateCode::IntermediateCode(
     TacGenerator::Ptr tacGenerator
 )
-: m_tacGenerator( tacGenerator ),
-  m_tempVarsInUse( 0u )
+: m_tacGenerator( tacGenerator )
 {
 }
 
@@ -19,7 +18,7 @@ IntermediateCode::IntermediateCode(
   *
   * \return  Vector of TAC instructions.
   */
-IntermediateCode::Instructions
+Instructions
 IntermediateCode::GenerateIntermediateCode(
     AstNode::Ptr astNode
 )
@@ -345,27 +344,11 @@ IntermediateCode::GetOperandFromExpressionInfo(
 
     // If opcode is being used, we need to create an assignment instruction for a temporary variable, which will then
     // become the returned operand.
-    std::string tempVarId = GetNewTempVar();
+    std::string tempVarId = m_tacGenerator->GetNewTempVar();
     ThreeAddrInstruction::Ptr instruction
         = std::make_shared< ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
     instructions.push_back( instruction );
     return tempVarId;
-}
-
-/**
- * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
- *         of how many are currently in use.
- *
- * \return  String identifier of the next available temporary variable.
- */
-std::string
-IntermediateCode::GetNewTempVar()
-{
-    // Use a naming convention that isn't allowed by the grammar, to avoid naming clashes. This doesn't matter
-    // at this point in compilation as any string is a valid representation.
-    std::string id = std::to_string( m_tempVarsInUse ) + "temp";
-    ++m_tempVarsInUse;
-    return id;
 }
 
 /**

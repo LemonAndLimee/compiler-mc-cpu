@@ -21,7 +21,6 @@ class IntermediateCode
 {
 public:
     using UPtr = std::unique_ptr< IntermediateCode >;
-    using Instructions = std::vector< TAC::ThreeAddrInstruction::Ptr >;
 
     IntermediateCode( TacGenerator::Ptr tacGenerator );
 
@@ -45,11 +44,6 @@ private:
                                       Instructions& preInstructions );
     Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
 
-    std::string GetNewTempVar();
-
     // Object responsible for converting complex operations and creating new instructions.
     TacGenerator::Ptr m_tacGenerator;
-
-    // Counter of the number of temporary variables currently in use.
-    size_t m_tempVarsInUse;
 };

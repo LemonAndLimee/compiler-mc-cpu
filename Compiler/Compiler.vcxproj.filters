@@ -51,6 +51,9 @@
     <ClCompile Include="IntermediateCode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TacGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Token.h">
