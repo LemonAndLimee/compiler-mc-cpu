@@ -1,9 +1,16 @@
 /**
- * Contains definition of class responsible for generating intermediate representation of code, in three-address-
- * instruction form.
+ * Contains definition of class responsible for converting an abstract syntax tree into three-address code.
  */
 
 #include "IntermediateCode.h"
+
+IntermediateCode::IntermediateCode(
+    TacGenerator::Ptr tacGenerator
+)
+: m_tacGenerator( tacGenerator ),
+  m_tempVarsInUse( 0u )
+{
+}
 
  /**
   * \brief  Converts the given AST to three-address-code instructions.
@@ -137,18 +144,21 @@ IntermediateCode::ConvertAssign(
     // LHS should be an identifier or a declaration of an identifier.
     AstNode::Ptr lhsNode = children[0];
     std::string identifier = GetIdentifierFromLhsNode( lhsNode );
-    // TODO: calculate unique identifier using the symbol table, to get 'result' attribute.
+    // Calculate unique identifier using the symbol table, to get 'result' attribute.
+    std::string uniqueLhsId = CalculateUniqueIdentifier( identifier, currentSt );
 
     // RHS should either be a literal, an ID, or an expression (which may need breaking down further).
     AstNode::Ptr rhsNode = children[1];
     Instructions prerequisiteInstructions{};
-    ExpressionInfo expressionInfo = ResolveExpression( rhsNode, prerequisiteInstructions );
+    ExpressionInfo expressionInfo = GetExpressionInfo( rhsNode, currentSt, prerequisiteInstructions );
 
-    // TODO: if all operands are literals (e.g. = 1+2), resolve the operation here and store as literal.
-    // TODO: if result is now storing a literal AND it is read-only in the ST, skip this instruction and
-    // mark the identifier as replaced with a constant.
 
-    LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
+    // Create assignment statement from the expression info, targeting the LHS identifier.
+    TAC::Opcode opcode = std::get< TAC::Opcode >( expressionInfo );
+    TAC::Operand operand1 = std::get< 1 >( expressionInfo );
+    TAC::Operand operand2 = std::get< 2 >( expressionInfo );
+
+    instructions.push_back( std::make_shared< TAC::ThreeAddrInstruction >( uniqueLhsId, opcode, operand1, operand2 ) );
 }
 
 /**
@@ -192,18 +202,47 @@ IntermediateCode::GetIdentifierFromLhsNode(
 }
 
 /**
+ * \brief  Generates a unique global identifier for a given identifier in a specific symbol table, that can be used to
+ *         identify it regardless of scope. Combines the two to produce a string.
+ *
+ * \param[in]  currentIdentifier  The original identifier, as represented in the AST.
+ * \param[in]  symbolTable        Pointer to the symbol table corresponding to this instance of the identifier.
+ *
+ * \return  The unique identifier string calculated.
+ */
+std::string
+IntermediateCode::CalculateUniqueIdentifier(
+    const std::string& currentIdentifier,
+    SymbolTable::Ptr symbolTable
+)
+{
+    // Use the pointer of the specific symbol table entry - if we use the table itself then a child scope of a variable
+    // will produce a different unique ID.
+    SymbolTableEntry::Ptr entry = symbolTable->GetEntryIfExists( currentIdentifier );
+    if ( nullptr == entry )
+    {
+        LOG_ERROR_AND_THROW( "Could not find entry for '" + currentIdentifier + "'.", std::runtime_error );
+    }
+    char* stPointerBytes = static_cast< char* >( static_cast< void* >( entry.get() ) );
+    std::string outputStr = currentIdentifier + std::string( stPointerBytes );
+    return outputStr;
+}
+
+/**
  * \brief  Retrieves the relevant opcode and operand(s) from an AST representing an expression. If the expression
  *         contains sub-expressions, it generates instructions for temporary variables first (which will then be
  *         used for the operand(s)).
  *
  * \param[in]   expressionNode   The AST node representing the expression being converted.
+ * \param[in]   currentSt        The current symbol table of this scope.
  * \param[out]  preInstructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Expression info tuple containing the opcode and operand(s).
  */
 IntermediateCode::ExpressionInfo
-IntermediateCode::ResolveExpression(
+IntermediateCode::GetExpressionInfo(
     AstNode::Ptr expressionNode,
+    SymbolTable::Ptr currentSt,
     Instructions& preInstructions
 )
 {
@@ -211,15 +250,124 @@ IntermediateCode::ResolveExpression(
     TAC::Operand operand1{};
     TAC::Operand operand2{};
 
-    if ( T::BYTE == expressionNode->m_nodeLabel )
+    GrammarSymbols::Symbol nodeLabel = expressionNode->m_nodeLabel;
+
+    if ( T::BYTE == nodeLabel )
     {
         operand1 = expressionNode->GetToken()->m_value->m_value.numericValue;
     }
-    // TODO:
-    // If node is identifier, check if has been replaced (use new global id) and substitute with its literal.
+    else if ( T::IDENTIFIER == nodeLabel )
+    {
+        std::string identifier = expressionNode->GetToken()->m_value->m_value.stringValue;
+        std::string uniqueId = CalculateUniqueIdentifier( identifier, currentSt );
+        operand1 = uniqueId;
+    }
     // If node is expression, fetch opcode and operands - if any child is a sub-expression, call recursively.
+    else
+    {
+        // First resolve the operands themselves, as they may need prerequisite instructions
+        AstNode::Children children = expressionNode->GetChildren();
+        ExpressionInfo lhsInfo = GetExpressionInfo( children[0], currentSt, preInstructions );
+        TAC::Operand lhs = GetOperandFromExpressionInfo( lhsInfo, preInstructions );
+
+        TAC::Operand rhs;
+        if ( 2u == children.size() )
+        {
+            ExpressionInfo rhsInfo = GetExpressionInfo( children[1], currentSt, preInstructions );
+            TAC::Operand rhs = GetOperandFromExpressionInfo( rhsInfo, preInstructions );
+        }
+
+        // For opcodes that directly map e.g. ADD, this is more simple
+        if ( TAC::g_symbolsToOpcodesMap.end() != TAC::g_symbolsToOpcodesMap.find( nodeLabel ) )
+        {
+            opcode = TAC::g_symbolsToOpcodesMap[nodeLabel];
+            operand1 = lhs;
+            operand2 = rhs;
+        }
+        // For more complex cases like divide, will need to generate pre-instructions
+        else
+        {
+            // TODO: call on the TAC generator to create pre-instructions
+            switch ( nodeLabel )
+            {
+            case T::MULTIPLY:
+            case T::DIVIDE:
+            case T::MOD:
+            case T::EXPONENT:
+            case T::EQ:
+            case T::NEQ:
+            case T::LEQ:
+            case T::GEQ:
+            case T::LT:
+            case T::GT:
+            case T::NOT:
+            case T::OR:  // Logical OR
+            case T::AND: // Logical AND
+                LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
+                break;
+            default:
+                LOG_ERROR_AND_THROW( "Invalid node label for expression: "
+                                     + GrammarSymbols::ConvertSymbolToString( nodeLabel ), std::invalid_argument );
+                break;
+            }
+        }
+    }
 
     return std::make_tuple( opcode, operand1, operand2 );
+}
+
+/**
+ * \brief  Takes information gathered about an expression and returns an operand value (either the direct single value,
+ *         or a temporary variable through creating an assignment statement.
+ *
+ * \param[in]   info          Information about the expression (if exists, the opcode and operand(s)).
+ * \param[out]  instructions  Container in which any generated instructions for temporary variables are stored.
+ *
+ * \return  Expression info tuple containing the opcode and operand(s).
+ */
+TAC::Operand
+IntermediateCode::GetOperandFromExpressionInfo(
+    ExpressionInfo info,
+    Instructions& instructions
+)
+{
+    TAC::Opcode opcode = std::get< TAC::Opcode >( info );
+    TAC::Operand operand1 = std::get< 1 >( info );
+    TAC::Operand operand2 = std::get< 2 >( info );
+
+    // If opcode isn't being used, it represents only a single value and should therefore be storing 1 operand only.
+    if ( TAC::Opcode::UNUSED == opcode )
+    {
+        if ( std::holds_alternative< std::monostate >( operand1 ) || !std::holds_alternative< std::monostate >( operand2 ) )
+        {
+            LOG_ERROR_AND_THROW( "Expression info with no opcode should hold one valid operand.", std::invalid_argument );
+        }
+        return operand1;
+    }
+
+    // If opcode is being used, we need to create an assignment instruction for a temporary variable, which will then
+    // become the returned operand.
+    std::string tempVarId = GetNewTempVar();
+    TAC::ThreeAddrInstruction::Ptr instruction
+        = std::make_shared< TAC::ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
+    instructions.push_back( instruction );
+    return tempVarId;
+}
+
+/**
+ * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
+ *         of how many are currently in use.
+ *
+ * \return  String identifier of the next available temporary variable.
+ */
+std::string
+IntermediateCode::GetNewTempVar()
+{
+    // Use a naming convention that isn't allowed by the grammar, to avoid naming clashes. This doesn't matter
+    // at this point in compilation as any string is a valid representation.
+    std::string id = std::to_string( m_tempVarsInUse ) + "temp";
+    ++m_tempVarsInUse;
+    return id;
 }
 
 /**
@@ -234,6 +382,7 @@ IntermediateCode::ConvertIfElse(
     Instructions& instructions
 )
 {
+    // TODO: implement
     LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
 }
 
@@ -249,6 +398,7 @@ IntermediateCode::ConvertForLoop(
     Instructions& instructions
 )
 {
+    // TODO: implement
     LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
 }
 
@@ -264,5 +414,6 @@ IntermediateCode::ConvertWhileLoop(
     Instructions& instructions
 )
 {
+    // TODO: implement
     LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
 }

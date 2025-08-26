@@ -1,18 +1,19 @@
 /**
- * Contains declaration of class responsible for generating intermediate representation of code, in three-address-
- * instruction form.
+ * Contains declaration of class responsible for converting an abstract syntax tree into three-address code.
  */
 
 #pragma once
 
 #include "AstNode.h"
 #include "ThreeAddrInstruction.h"
+#include "TacGenerator.h"
 
 #include <tuple>
 
 /**
- * \brief  Class responsible for generating an intermediate representation of code. Takes an abstract syntax tree
- *         (which contains symbol tables for its scopes) and converts it into a list of TAC instructions.
+ * \brief  Class responsible for traversing an abstract syntax tree and converting it into a list of three-address code
+ *         instructions. This is a higher level organisation class, and delegates any complex cases that need new
+ *         instructions generating to its TAC generator member.
  */
 class IntermediateCode
 {
@@ -20,7 +21,7 @@ public:
     using UPtr = std::unique_ptr< IntermediateCode >;
     using Instructions = std::vector< TAC::ThreeAddrInstruction::Ptr >;
 
-    IntermediateCode() = default;
+    IntermediateCode( TacGenerator::Ptr tacGenerator );
 
     Instructions GenerateIntermediateCode( AstNode::Ptr astNode );
 
@@ -30,13 +31,23 @@ private:
     void ConvertAssign( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
     std::string GetIdentifierFromLhsNode( AstNode::Ptr lhsNode );
 
-    using ExpressionInfo = std::tuple< TAC::Opcode, TAC::Operand, TAC::Operand >;
-    ExpressionInfo ResolveExpression( AstNode::Ptr expressionNode, Instructions& preInstructions );
-
     void ConvertIfElse( AstNode::Ptr astNode, Instructions& instructions );
     void ConvertForLoop( AstNode::Ptr astNode, Instructions& instructions );
     void ConvertWhileLoop( AstNode::Ptr astNode, Instructions& instructions );
 
-    // Storage of any replaced const identifiers that were holding a byte value.
-    std::unordered_map< std::string, uint8_t > m_replacedIdentifiers;
+    std::string CalculateUniqueIdentifier( const std::string& currentIdentifier, SymbolTable::Ptr symbolTable );
+
+    using ExpressionInfo = std::tuple< TAC::Opcode, TAC::Operand, TAC::Operand >;
+    ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode,
+                                      SymbolTable::Ptr currentSt,
+                                      Instructions& preInstructions );
+    TAC::Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
+
+    std::string GetNewTempVar();
+
+    // Object responsible for converting complex operations and creating new instructions.
+    TacGenerator::Ptr m_tacGenerator;
+
+    // Counter of the number of temporary variables currently in use.
+    size_t m_tempVarsInUse;
 };

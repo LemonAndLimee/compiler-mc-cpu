@@ -6,6 +6,8 @@
 #include "Logger.h"
 #include "SymbolTableGenerator.h"
 
+// TODO: whole codebase - convert std::string usage to fixed length char[] where possible
+
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
  *

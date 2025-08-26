@@ -28,6 +28,16 @@ enum Opcode
     BRZ   // Branch if zero
 };
 
+// Map of grammar terminal symbols to their corresponding opcodes (if they map directly).
+std::unordered_map< GrammarSymbols::Symbol, Opcode > g_symbolsToOpcodesMap{
+    { T::PLUS, Opcode::ADD },
+    { T::MINUS, Opcode::SUB },
+    { T::BITWISE_AND, Opcode::AND },
+    { T::BITWISE_OR, Opcode::OR },
+    { T::LSHIFT, Opcode::LS },
+    { T::RSHIFT, Opcode::RS }
+};
+
 // Operand can either be a string identifier/label, or a numeric value (or can be empty i.e. monostate)
 using Operand = std::variant< std::monostate, std::string, uint8_t >;
 

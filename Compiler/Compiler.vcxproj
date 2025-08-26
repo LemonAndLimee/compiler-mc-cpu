@@ -171,6 +171,7 @@
     <ClInclude Include="SymbolTable.h" />
     <ClInclude Include="SymbolTableEntry.h" />
     <ClInclude Include="SymbolTableGenerator.h" />
+    <ClInclude Include="TacGenerator.h" />
     <ClInclude Include="ThreeAddrInstruction.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Tokeniser.h" />
