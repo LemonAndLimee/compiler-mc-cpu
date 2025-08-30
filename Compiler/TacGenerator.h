@@ -20,11 +20,15 @@ public:
 
     TacGenerator() = default;
 
-    std::string GetNewTempVar();
+    std::string GetNewTempVar( std::string hrfName = "temp" );
+    std::string GetNewLabel( std::string hrfName = "label" );
 
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
 
 private:
     // Counter of the number of temporary variables currently in use.
     size_t m_tempVarsInUse;
+
+    // Counter of the number of branch labels currently in use.
+    size_t m_labelsInUse;
 };

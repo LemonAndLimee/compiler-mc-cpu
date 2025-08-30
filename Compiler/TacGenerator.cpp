@@ -4,20 +4,41 @@
 
 #include "TacGenerator.h"
 
- /**
-  * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
-  *         of how many are currently in use.
-  *
-  * \return  String identifier of the next available temporary variable.
-  */
+/**
+ * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
+ *         of how many are currently in use.
+ *
+ * \param[in]  hrfName  Optional identifier name to use in combination with the counter, to allow easier debugging.
+ *
+ * \return  String identifier of the next available temporary variable.
+ */
 std::string
-TacGenerator::GetNewTempVar()
+TacGenerator::GetNewTempVar(
+    std::string hrfName //= "temp"
+)
 {
     // Use a naming convention that isn't allowed by the grammar, to avoid naming clashes. This doesn't matter
     // at this point in compilation as any string is a valid representation.
-    std::string id = std::to_string( m_tempVarsInUse ) + "temp";
+    std::string id = std::to_string( m_tempVarsInUse ) + hrfName;
     ++m_tempVarsInUse;
     return id;
+}
+
+/**
+ * \brief  Gets a new unique branch label. Uses a counter to keep track of the next available number.
+ *
+ * \param[in]  hrfName  Optional label name to use in combination with the counter, to allow easier debugging.
+ *
+ * \return  Unique label in string form.
+ */
+std::string
+TacGenerator::GetNewLabel(
+    std::string hrfName //= "label"
+)
+{
+    std::string label = hrfName + std::to_string( m_labelsInUse );
+    ++m_labelsInUse;
+    return label;
 }
 
 /**
