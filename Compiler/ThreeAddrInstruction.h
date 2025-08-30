@@ -73,6 +73,17 @@ namespace TAC
         {
         }
 
+        bool
+        operator==( const ThreeAddrInstruction& comparisonInstr ) const
+        {
+            return comparisonInstr.m_result == m_result
+                   && comparisonInstr.m_operation == m_operation
+                   // std::variant equals operators will compare values if they are at the same index.
+                   && comparisonInstr.m_operand1 == m_operand1
+                   && comparisonInstr.m_operand2 == m_operand2
+                   && comparisonInstr.m_label == m_label;
+        }
+
         // The target of the operation, i.e. where the result will be stored.
         std::string m_result;
 
