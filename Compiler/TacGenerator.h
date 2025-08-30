@@ -22,7 +22,7 @@ public:
 
     std::string GetNewTempVar();
 
-    Operand Multiply( Operand op1, Operand op2, Instructions& instructions, size_t& numTempVars );
+    Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
 
 private:
     // Counter of the number of temporary variables currently in use.

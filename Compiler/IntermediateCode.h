@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include "AstNode.h"
-#include "ThreeAddrInstruction.h"
 #include "TacGenerator.h"
 
 #include <tuple>

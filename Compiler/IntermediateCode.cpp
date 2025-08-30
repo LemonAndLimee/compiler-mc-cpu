@@ -277,7 +277,7 @@ IntermediateCode::GetExpressionInfo(
         // For opcodes that directly map e.g. ADD, this is more simple
         if ( g_symbolsToOpcodesMap.end() != g_symbolsToOpcodesMap.find( nodeLabel ) )
         {
-            opcode = g_symbolsToOpcodesMap[nodeLabel];
+            opcode = g_symbolsToOpcodesMap.find( nodeLabel )->second;
             operand1 = lhs;
             operand2 = rhs;
         }

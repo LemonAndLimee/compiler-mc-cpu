@@ -27,7 +27,6 @@ TacGenerator::GetNewTempVar()
  * \param[in]      op1           The first operand to be multiplied.
  * \param[in]      op2           The second operand to be multiplied.
  * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
- * \param[in,out]  numTempVars   The number of temporary variables currently in use. Used to name the next one.
  *
  * \return  Operand describing the result of the operation (in this case, an identifier).
  */
@@ -35,8 +34,7 @@ Operand
 TacGenerator::Multiply(
     Operand op1,
     Operand op2,
-    Instructions& instructions,
-    size_t& numTempVars
+    Instructions& instructions
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -44,4 +42,5 @@ TacGenerator::Multiply(
         LOG_ERROR_AND_THROW( "Operands for multiplication must both contain a value.", std::invalid_argument );
     }
 
+    return std::monostate{}; // stub return for compilation
 }
