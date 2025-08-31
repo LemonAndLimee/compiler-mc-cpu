@@ -10,26 +10,6 @@ public:
     {
     }
 
-    /**
-     * \brief  Asserts that two collections of instructions are equal.
-     *
-     * \param[in]  lhs  The first collection of instructions.
-     * \param[in]  rhs  The second collection of instructions, being compared.
-     */
-    void
-    CheckInstructionsEqual(
-        const Instructions& lhs,
-        const Instructions& rhs
-    )
-    {
-        BOOST_REQUIRE_EQUAL( lhs.size(), rhs.size() );
-
-        for ( size_t index = 0; index < lhs.size(); ++index )
-        {
-            BOOST_CHECK( *lhs[index].get() == *rhs[index].get() );
-        }
-    }
-
     enum ExpectLabel
     {
         LBL_FALSE,
@@ -112,6 +92,20 @@ public:
         std::string label = m_currentInstruction->m_label;
         BOOST_CHECK_NE( "", label );
         return label;
+    }
+
+    /**
+     * \brief  Checks the given vector of ID/label strings are all unique to each other.
+     *
+     * \param[in]  strings  Vector of strings.
+     */
+    void
+    CheckStringsAreUnique(
+        const std::vector< std::string >& strings
+    )
+    {
+        std::set< std::string > s( strings.begin(), strings.end() );
+        BOOST_CHECK_EQUAL( s.size(), strings.size() );
     }
 
 protected:
@@ -296,6 +290,11 @@ BOOST_AUTO_TEST_CASE( Multiply_Success_Identifier )
     CheckInstrAttributes( Opcode::BRGT, bitCounterId, expectedCompValue, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     BOOST_CHECK_EQUAL( mainLoopLabel, GetResultIdAndCheckValid() ); // Check is branching back to start of main loop.
 
+    // Check all ID and label values are unique (i.e. they are being used correctly and not duplicating one another).
+    std::vector< std::string > ids{ resultId, multiplierId, multiplicandId, bitCounterId, andResultId };
+    CheckStringsAreUnique( ids );
+    std::vector< std::string > labels{ mainLoopLabel, shiftLabel };
+    CheckStringsAreUnique( labels );
 
     // Check the returned operand is pointing to the result id string
     BOOST_CHECK( std::holds_alternative< std::string >( result ) );
