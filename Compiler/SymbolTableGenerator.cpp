@@ -79,7 +79,6 @@ SymbolTableGenerator::PopulateTableFromSubTree(
 
         if ( child->IsStorageInUse() )
         {
-            // TODO: break this logic down into separate methods
             // If child holds a token
             if ( child->IsStoringToken() )
             {

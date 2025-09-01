@@ -23,9 +23,6 @@ AstGenerator::AstGenerator(
 AstNode::Ptr
 AstGenerator::GenerateAst()
 {
-    // TODO: consider an algorithm that is token-led, rather than one which checks each available rule for a match.
-    // The current algorithm has a lot of excess checks, and is almost impossible to use to locate the syntax error.
-
     if ( m_tokens.empty() )
     {
         LOG_ERROR_AND_THROW( "Cannot generate AST from zero tokens.", std::invalid_argument );

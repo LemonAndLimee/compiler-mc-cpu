@@ -33,7 +33,6 @@ public:
 
     // Contains token value - e.g. if type is identifier, this would contain the variable name.
     // If the token represents a constant literal number, this would contain the number.
-    // TODO: swap out for std variant
     TokenValue::Ptr m_value;
 
     bool

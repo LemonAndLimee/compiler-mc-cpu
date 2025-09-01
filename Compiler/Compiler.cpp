@@ -6,8 +6,6 @@
 #include "Logger.h"
 #include "SymbolTableGenerator.h"
 
-// TODO: whole codebase - convert std::string usage to fixed length char[] where possible
-
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
  *
@@ -85,9 +83,6 @@ RunCompiler(
         return false;
     }
     LOG_INFO_AND_COUT( "Successfully created symbol table!" );
-
-    // TODO: consider defining custom exception types, e.g. syntax error, to specify whether error is internal or from
-    // incorrect input. Consider how better to display non-internal errors, e.g. to the terminal as well as the logs.
 
     // TODO: Generate assembly code here...
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );
