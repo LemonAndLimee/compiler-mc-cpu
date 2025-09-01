@@ -18,10 +18,11 @@ class TacGenerator
 public:
     using Ptr = std::shared_ptr< TacGenerator >;
 
-    TacGenerator() = default;
+    TacGenerator();
 
     std::string GetNewTempVar( std::string hrfName = "temp" );
     std::string GetNewLabel( std::string hrfName = "label" );
+    void SetNextLabel( const std::string& label );
 
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
 
@@ -31,4 +32,7 @@ private:
 
     // Counter of the number of branch labels currently in use.
     size_t m_labelsInUse;
+
+    // Customisable next label to return.
+    std::string m_nextLabel;
 };

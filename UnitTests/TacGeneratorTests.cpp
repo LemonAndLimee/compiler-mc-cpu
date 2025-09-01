@@ -140,6 +140,19 @@ BOOST_AUTO_TEST_CASE( GetNewLabel )
     BOOST_CHECK_EQUAL( tempLabel + "2", m_generator->GetNewLabel( tempLabel ) );
 }
 
+/**
+ * Tests that the method for getting a new branch label will return the pre-set result if a value has already been
+ * specified. Test it will not get used a second time.
+ */
+BOOST_AUTO_TEST_CASE( GetNewLabel_ReusePrevious )
+{
+    BOOST_CHECK_EQUAL( "label0", m_generator->GetNewLabel() );
+    std::string nextLabel = "next";
+    m_generator->SetNextLabel( nextLabel );
+    BOOST_CHECK_EQUAL( nextLabel, m_generator->GetNewLabel() );
+    BOOST_CHECK_EQUAL( "label1", m_generator->GetNewLabel());
+}
+
 BOOST_AUTO_TEST_SUITE( MultiplyTests )
 
 /**

@@ -4,6 +4,13 @@
 
 #include "TacGenerator.h"
 
+TacGenerator::TacGenerator()
+    : m_tempVarsInUse( 0u ),
+    m_labelsInUse( 0u ),
+    m_nextLabel( "" )
+{
+}
+
 /**
  * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
  *         of how many are currently in use.
@@ -25,7 +32,8 @@ TacGenerator::GetNewTempVar(
 }
 
 /**
- * \brief  Gets a new unique branch label. Uses a counter to keep track of the next available number.
+ * \brief  Gets a new unique branch label. Uses a counter to keep track of the next available number. If the next label
+ *         has already been pre-set, this is returned instead.
  *
  * \param[in]  hrfName  Optional label name to use in combination with the counter, to allow easier debugging.
  *
@@ -36,9 +44,31 @@ TacGenerator::GetNewLabel(
     std::string hrfName //= "label"
 )
 {
-    std::string label = hrfName + std::to_string( m_labelsInUse );
-    ++m_labelsInUse;
-    return label;
+    if ( "" != m_nextLabel )
+    {
+        std::string label = m_nextLabel;
+        m_nextLabel = "";
+        return label;
+    }
+    else
+    {
+        std::string label = hrfName + std::to_string( m_labelsInUse );
+        ++m_labelsInUse;
+        return label;
+    }
+}
+
+/**
+ * \brief  Configures the next label to be returned when a new one is requested.
+ *
+ * \param[in]  label  The string to be returned upon next label request.
+ */
+void
+TacGenerator::SetNextLabel(
+    const std::string& label
+)
+{
+    m_nextLabel = label;
 }
 
 /**
