@@ -464,4 +464,152 @@ BOOST_AUTO_TEST_CASE( Divide_Success_Identifier )
 
 BOOST_AUTO_TEST_SUITE_END() // DivideTests
 
+BOOST_AUTO_TEST_SUITE( ModuloTests )
+
+/**
+ * Tests that the method for generating TAC for modulo will throw an error if either operand is empty.
+ */
+BOOST_AUTO_TEST_CASE( Modulo_InvalidOperands )
+{
+    Operand invalidOperand{};
+    Operand invalidOperand2{};
+    Operand validOperand{ "identifier" };
+
+    Instructions instructions{};
+
+    BOOST_CHECK_THROW( m_generator->Modulo( invalidOperand, validOperand, instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( validOperand, invalidOperand, instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( invalidOperand, invalidOperand2, instructions ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for generating TAC for modulo will throw an error if the quotient (operand 2) is 0.
+ */
+BOOST_AUTO_TEST_CASE( ModuloByZero )
+{
+    Operand validOperand{ "identifier" };
+    Operand zeroOperand{ 0u };
+
+    Instructions instructions{};
+
+    BOOST_CHECK_THROW( m_generator->Modulo( validOperand, zeroOperand, instructions ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for generating TAC for modulo will return a numeric value with the operation result
+ * if both operands are literals, and it does not add any instructions to the given container.
+ */
+BOOST_AUTO_TEST_CASE( Modulo_Success_TwoLiterals )
+{
+    constexpr uint8_t byte1{ 5u };
+    constexpr uint8_t byte2{ 2u };
+
+    Operand operand1{ byte1 };
+    Operand operand2{ byte2 };
+
+    Instructions instructions{};
+
+    BOOST_CHECK_EQUAL( 0u, instructions.size() );
+    Operand result = m_generator->Modulo( operand1, operand2, instructions );
+
+    constexpr uint8_t expectedResult{ byte1 % byte2 };
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
+    BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
+
+    BOOST_CHECK_EQUAL( 0u, instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for modulo will return an identifier of a temporary storage of the
+ * result, and that the necessary pre-instructions are appended to the given container.
+ *
+ * We expect a repeated subtraction algorithm to be used.
+ */
+BOOST_AUTO_TEST_CASE( Modulo_Success_Identifier )
+{
+    constexpr uint8_t byte{ 2u };
+    const std::string id{ "identifier"};
+
+    Operand operand1{ byte };
+    Operand operand2{ id };
+
+    Instructions instructions{ nullptr }; // Initialise with an element to test that previous contents are not removed.
+    size_t initialSize{ instructions.size() };
+
+    BOOST_CHECK_EQUAL( 1u, initialSize );
+    Operand result = m_generator->Modulo( operand1, operand2, instructions );
+
+    /**
+     * Expect the following algorithm:
+     *
+     * result = 0
+     * dividend = op1
+     * quotient = op2
+     *
+     * loop: BRGT end quotient dividend
+     * result = result + 1
+     * dividend = dividend - quotient
+     * BRU loop
+     * end:
+     *
+     * (return dividend)
+     */
+
+    constexpr size_t expectedNumInstructionsAdded{ 7u };
+    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, instructions.size() );
+
+    m_currentInstruction = instructions[0];
+    BOOST_CHECK_EQUAL( nullptr, m_currentInstruction );
+
+    // First 3 instructions should be initialising the temp vars.
+
+    m_currentInstruction = instructions[1];
+    constexpr uint8_t expectedResultInit{ 0u };
+    CheckInstrAttributes( Opcode::UNUSED, expectedResultInit, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string resultId = GetResultIdAndCheckValid();
+
+    m_currentInstruction = instructions[2];
+    CheckInstrAttributes( Opcode::UNUSED, operand1, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string dividendId = GetResultIdAndCheckValid();
+
+    m_currentInstruction = instructions[3];
+    CheckInstrAttributes( Opcode::UNUSED, operand2, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string quotientId = GetResultIdAndCheckValid();
+
+    // Main loop:
+
+    m_currentInstruction = instructions[4];
+    CheckInstrAttributes( Opcode::BRGT, quotientId, dividendId, ExpectLabel::LBL_TRUE, ExpectResult::RES_TRUE );
+    // Expect to be branching to the end label. Check this at the end of the program.
+    std::string endLabel = GetResultIdAndCheckValid();
+    std::string mainLoopLabel = GetLabelAndCheckValid();
+
+    m_currentInstruction = instructions[5];
+    CheckInstrAttributes( Opcode::ADD, resultId, 1u, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+
+    m_currentInstruction = instructions[6];
+    CheckInstrAttributes( Opcode::SUB, dividendId, quotientId, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( dividendId, GetResultIdAndCheckValid() );
+
+    m_currentInstruction = instructions[7];
+    CheckInstrAttributes( Opcode::BRU, {}, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( mainLoopLabel, GetResultIdAndCheckValid() ); // Check is branching to main loop
+
+    // Check that the end label is returned next time a label is requested.
+    BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+
+    // Check all ID and label values are unique (i.e. they are being used correctly and not duplicating one another).
+    std::vector< std::string > ids{ resultId, dividendId, quotientId };
+    CheckStringsAreUnique( ids );
+    std::vector< std::string > labels{ mainLoopLabel, endLabel };
+    CheckStringsAreUnique( labels );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( dividendId, std::get< std::string >( result ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END() // ModuloTests
+
 BOOST_AUTO_TEST_SUITE_END() // TacGeneratorTests

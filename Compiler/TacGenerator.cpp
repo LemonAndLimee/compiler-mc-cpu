@@ -188,9 +188,51 @@ TacGenerator::Divide(
     Instructions& instructions
 )
 {
+    return AddDivModInstructions( op1, op2, instructions, DivMod::DIV );
+}
+
+/**
+ * \brief  Generates the instructions needed for the modulo operation. Returns an operand containing the
+ *         final result.
+ *
+ * \param[in]      op1           The first operand (the dividend/numerator).
+ * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::Modulo(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    return AddDivModInstructions( op1, op2, instructions, DivMod::MOD );
+}
+
+/**
+ * \brief  Generates the instructions needed for the division/modulo operations, as the process is shared between them.
+ *         Returns an operand containing the final result, determined by the specified return type (div or mod).
+ *
+ * \param[in]      op1           The first operand (the dividend/numerator).
+ * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ * \param[in]      returnType    Whether to return the result from the division or modulo operation.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::AddDivModInstructions(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions,
+    DivMod returnType )
+{
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
     {
-        LOG_ERROR_AND_THROW( "Operands for division must both contain a value.", std::invalid_argument );
+        std::string operation = ( DivMod::MOD == returnType ) ? "modulo" : "division";
+        LOG_ERROR_AND_THROW( "Operands for " + operation + " must both contain a value.", std::invalid_argument );
     }
 
     if ( std::holds_alternative< uint8_t >( op2 ) )
@@ -200,18 +242,31 @@ TacGenerator::Divide(
         {
             std::string value1String = std::holds_alternative< Literal >( op1 )
                                        ? std::to_string( std::get< Literal >( op1 ) ) : std::get< std::string >( op1 );
-            LOG_ERROR_AND_THROW( "Division by zero not allowed: " + value1String + " / "
+            std::string operation = ( DivMod::MOD == returnType ) ? " % " : " / ";
+            LOG_ERROR_AND_THROW( "Division by zero not allowed: " + value1String + operation
                 + std::to_string( value2 ), std::invalid_argument );
         }
 
         if ( std::holds_alternative< Literal >( op1 ) )
         {
             Literal value1{ std::get< Literal >( op1 ) };
-            Operand literalResult = value1 / value2;
+            Operand literalResult;
+            if ( DivMod::DIV == returnType )
+            {
+                literalResult = value1 / value2;
+            }
+            else if ( DivMod::MOD == returnType )
+            {
+                literalResult = value1 % value2;
+            }
+            else
+            {
+                LOG_ERROR_AND_THROW( "Unknown return specifier: can only be DIV or MOD. Value = "
+                                     + std::to_string( returnType ), std::invalid_argument );
+            }
             return literalResult;
         }
     }
-
     /**
      * Use the following algorithm:
      *
@@ -225,7 +280,7 @@ TacGenerator::Divide(
      * BRU loop
      * end:
      *
-     * (return result)
+     * (div = result, mod = dividend)
      */
 
     constexpr size_t numInstructionsToAdd{ 7u };
@@ -266,5 +321,18 @@ TacGenerator::Divide(
     SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
-    return result;
+
+    if ( DivMod::DIV == returnType )
+    {
+        return result;
+    }
+    else if ( DivMod::MOD == returnType )
+    {
+        return dividend;
+    }
+    else
+    {
+        LOG_ERROR_AND_THROW( "Unknown return specifier: can only be DIV or MOD. Value = " + std::to_string( returnType ),
+                             std::invalid_argument );
+    }
 }

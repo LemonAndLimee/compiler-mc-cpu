@@ -26,8 +26,16 @@ public:
 
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
     Operand Divide( Operand op1, Operand op2, Instructions& instructions );
+    Operand Modulo( Operand op1, Operand op2, Instructions& instructions );
 
 private:
+    // Whether a desired result is the division result or the modulo, as they share the same set of instructions.
+    enum DivMod{ DIV, MOD };
+    Operand AddDivModInstructions( Operand op1,
+                                   Operand op2,
+                                   Instructions& instructions,
+                                   DivMod returnType );
+
     // Counter of the number of temporary variables currently in use.
     size_t m_tempVarsInUse;
 
