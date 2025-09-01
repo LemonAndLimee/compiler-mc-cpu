@@ -25,6 +25,7 @@ public:
     void SetNextLabel( const std::string& label );
 
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
+    Operand Divide( Operand op1, Operand op2, Instructions& instructions );
 
 private:
     // Counter of the number of temporary variables currently in use.

@@ -79,7 +79,7 @@ TacGenerator::SetNextLabel(
  * \param[in]      op2           The second operand to be multiplied.
  * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
- * \return  Operand describing the result of the operation (in this case, an identifier).
+ * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Multiply(
@@ -166,6 +166,104 @@ TacGenerator::Multiply(
     constexpr uint8_t brgtValue{ 0u };
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( mainLoopLabel, Opcode::BRGT, bitCounter, brgtValue ) );
 
+
+    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+    return result;
+}
+
+/**
+ * \brief  Generates the instructions needed for the division operation. Returns an operand containing the
+ *         final result.
+ *
+ * \param[in]      op1           The first operand (the dividend/numerator).
+ * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::Divide(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for division must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Literal value2{ std::get< Literal >( op2 ) };
+        if ( 0u == value2 )
+        {
+            std::string value1String = std::holds_alternative< Literal >( op1 )
+                                       ? std::to_string( std::get< Literal >( op1 ) ) : std::get< std::string >( op1 );
+            LOG_ERROR_AND_THROW( "Division by zero not allowed: " + value1String + " / "
+                + std::to_string( value2 ), std::invalid_argument );
+        }
+
+        if ( std::holds_alternative< Literal >( op1 ) )
+        {
+            Literal value1{ std::get< Literal >( op1 ) };
+            Operand literalResult = value1 / value2;
+            return literalResult;
+        }
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * result = 0
+     * dividend = op1
+     * quotient = op2
+     *
+     * loop: BRGT end quotient dividend
+     * result = result + 1
+     * dividend = dividend - quotient
+     * BRU loop
+     * end:
+     *
+     * (return result)
+     */
+
+    constexpr size_t numInstructionsToAdd{ 7u };
+    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
+    tempIns.reserve( numInstructionsToAdd );
+
+    Operand emptyOp; // Empty operand to use when an operand is not in use.
+
+    // Temp vars declarations
+
+    std::string result = GetNewTempVar( "divResult" );
+    constexpr uint8_t resultInit{ 0u };
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, resultInit, emptyOp ) );
+
+    // Copy operands into new temp vars because the values are edited.
+    std::string dividend = GetNewTempVar( "dividend" );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, Opcode::UNUSED, op1, emptyOp ) );
+    std::string quotient = GetNewTempVar( "quotient" );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( quotient, Opcode::UNUSED, op2, emptyOp ) );
+
+
+    // Main loop
+
+    std::string mainLoopLabel = GetNewLabel( "divLoop" );
+    std::string endLabel = GetNewLabel( "end" );
+    tempIns.push_back(
+        std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, quotient, dividend, mainLoopLabel )
+    );
+
+    constexpr uint8_t increment{ 1u };
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::ADD, result, increment ) );
+
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, Opcode::SUB, dividend, quotient ) );
+
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( mainLoopLabel, Opcode::BRU, emptyOp, emptyOp ) );
+
+
+    SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
     return result;
