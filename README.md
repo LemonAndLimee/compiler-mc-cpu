@@ -5,4 +5,4 @@ Working towards accepting a current language which includes:
 - Variables (current with a single data type, 'byte')
 - If/else statements
 - For and While loops
-- The following operators (following C++ notation standards): +, -, *, /, %, ^, ==, !=, <=, >=, <, >, !, ||, &&, |, &, <<, >>
+- The following operators (following C++ notation standards): +, -, *, /, %, ==, !=, <=, >=, <, >, !, ||, &&, |, &, <<, >>

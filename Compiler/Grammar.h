@@ -35,7 +35,6 @@ namespace GrammarSymbols
         MULTIPLY,
         DIVIDE,
         MOD,
-        EXPONENT,
         EQ,  // ==
         NEQ, // !=
         LEQ, // <=
@@ -75,7 +74,6 @@ namespace GrammarSymbols
         Negation,
         Expression,
         Term,
-        Exp_factor,
         Factor,
     };
 
@@ -96,7 +94,6 @@ namespace GrammarSymbols
         MULTIPLY,
         DIVIDE,
         MOD,
-        EXPONENT,
         EQ,
         NEQ,
         LEQ,
@@ -147,7 +144,6 @@ namespace GrammarSymbols
         { Negation , "Negation" },
         { Expression , "Expression" },
         { Term , "Term" },
-        { Exp_factor , "Exp_factor" },
         { Factor , "Factor" }
     };
 
@@ -288,16 +284,9 @@ namespace GrammarRules
         {
             Term,
             {
-                { Exp_factor, T::MULTIPLY, Exp_factor },
-                { Exp_factor, T::DIVIDE, Exp_factor },
-                { Exp_factor, T::MOD, Exp_factor },
-                { Exp_factor }
-            }
-        },
-        {
-            Exp_factor,
-            {
-                { Factor, T::EXPONENT, Factor },
+                { Factor, T::MULTIPLY, Factor },
+                { Factor, T::DIVIDE, Factor },
+                { Factor, T::MOD, Factor },
                 { Factor }
             }
         },

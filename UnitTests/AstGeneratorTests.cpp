@@ -114,11 +114,9 @@ BOOST_AUTO_TEST_CASE( HighLevelRule_SingleTerminalMatch )
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_SingleNonTerminal )
 {
-    // The rules for Exp_factor are as follows:
-    // - Factor EXPONENT Factor
-    // - Factor
+    // One of the rules for Term is "Factor"
     // "Factor" then expands to "ID", which can be resolved by a single ID token.
-    constexpr GrammarSymbols::NT startingNt { Exp_factor };
+    constexpr GrammarSymbols::NT startingNt { Term };
 
     // A single ID token should match one of the rules for Factor
     const std::string tokenString = "hello";
@@ -141,11 +139,9 @@ BOOST_AUTO_TEST_CASE( MatchesRule_SingleNonTerminal )
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
 {
-    // The rules for Exp_factor are as follows:
-    // - Factor EXPONENT Factor
-    // - Factor
+    // One of the rules for Term is "Factor"
     // "Factor" then expands to "ID", which can be resolved by a single ID token.
-    constexpr GrammarSymbols::NT startingNt { Exp_factor };
+    constexpr GrammarSymbols::NT startingNt { Term };
 
     // A single ID token should match one of the rules for Factor
     const std::string tokenString1 = "hello";
@@ -153,9 +149,9 @@ BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
     const std::string tokenString2 = "hello2";
     Token::Ptr idToken2 = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString2 );
 
-    Token::Ptr expToken = std::make_shared< Token >( TokenType::EXPONENT );
+    Token::Ptr expToken = std::make_shared< Token >( TokenType::MULTIPLY );
 
-    // The set of tokens should satisfy the rule "Factor EXPONENT Factor"
+    // The set of tokens should satisfy the rule "Factor MULTIPLY Factor"
     Tokens tokens{ idToken1, expToken, idToken2 };
 
     AstGenerator::UPtr astGenerator = std::make_unique< AstGenerator >( tokens, startingNt );
@@ -164,9 +160,9 @@ BOOST_AUTO_TEST_CASE( MatchesRule_MultipleMixedSymbols )
     BOOST_REQUIRE_NE( nullptr, returnedNode );
 
     // Check the returned node is as expected:
-    // - With label EXPONENT
+    // - With label MULTIPLY
     // - Storing two child nodes, each containing the ID tokens
-    BOOST_CHECK_EQUAL( TokenType::EXPONENT, returnedNode->m_nodeLabel );
+    BOOST_CHECK_EQUAL( TokenType::MULTIPLY, returnedNode->m_nodeLabel );
 
     BOOST_CHECK( returnedNode->IsStorageInUse() );
     BOOST_CHECK( !returnedNode->IsStoringToken() ); // Expect it to be storing children
@@ -214,11 +210,9 @@ BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed )
  */
 BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed_NtLastSymbol )
 {
-    // The rules for Exp_factor are as follows:
-    // - Factor EXPONENT Factor
-    // - Factor
+    // One of the rules for Term is "Factor"
     // "Factor" then expands to "ID", which can be resolved by a single ID token.
-    constexpr GrammarSymbols::NT startingNt { Exp_factor };
+    constexpr GrammarSymbols::NT startingNt { Term };
 
     // A single ID token should match one of the rules for Factor
     const std::string tokenString1 = "hello";
@@ -226,13 +220,13 @@ BOOST_AUTO_TEST_CASE( MatchesRule_LeftoverTokens_NotAllowed_NtLastSymbol )
     const std::string tokenString2 = "hello2";
     Token::Ptr idToken2 = std::make_shared< Token >( TokenType::IDENTIFIER, tokenString2 );
 
-    Token::Ptr expToken = std::make_shared< Token >( TokenType::EXPONENT );
+    Token::Ptr expToken = std::make_shared< Token >( TokenType::MULTIPLY );
 
     // Excess leftover tokens
     Token::Ptr excessToken = std::make_shared< Token >( TokenType::MOD );
     Token::Ptr excessToken1 = std::make_shared< Token >( TokenType::FOR );
 
-    // The set of tokens should satisfy the rule "Factor EXPONENT Factor", with leftover tokens
+    // The set of tokens should satisfy the rule "Factor MULTIPLY Factor", with leftover tokens
     // at the end
     Tokens tokens{ idToken1, expToken, idToken2, excessToken, excessToken1 };
     size_t originalTokensSize = tokens.size();

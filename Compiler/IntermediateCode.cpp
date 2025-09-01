@@ -290,7 +290,6 @@ IntermediateCode::GetExpressionInfo(
             case T::MULTIPLY:
             case T::DIVIDE:
             case T::MOD:
-            case T::EXPONENT:
             case T::EQ:
             case T::NEQ:
             case T::LEQ:

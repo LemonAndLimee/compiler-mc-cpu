@@ -330,9 +330,8 @@ TacGenerator::AddDivModInstructions(
     {
         return dividend;
     }
-    else
-    {
-        LOG_ERROR_AND_THROW( "Unknown return specifier: can only be DIV or MOD. Value = " + std::to_string( returnType ),
-                             std::invalid_argument );
-    }
+    LOG_ERROR_AND_THROW( "Unknown return specifier: can only be DIV or MOD. Value = " + std::to_string( returnType ),
+                         std::invalid_argument );
+
+    return std::monostate{}; // This is never reached, but used to satisfy compiler warning.
 }
