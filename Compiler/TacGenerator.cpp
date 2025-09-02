@@ -335,3 +335,123 @@ TacGenerator::AddDivModInstructions(
 
     return std::monostate{}; // This is never reached, but used to satisfy compiler warning.
 }
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the == operation.
+ *
+ * \param[in]      op1           The first operand (the dividend/numerator).
+ * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::Equals(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for == must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) == std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isEq = 1
+     * BRE end op1 op2
+     * isEq = 0
+     * end:
+     *
+     * (return isEq)
+     */
+
+    const std::string resultName = "isEq";
+    const Literal valueIfTrue{ 1u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRE,
+                                      BranchOpOrder::OP1FIRST,
+                                      valueIfTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
+ *         pattern, this is a shared utility method.
+ *
+ * \param[in]      op1                 The first operand (the dividend/numerator).
+ * \param[in]      op2                 The second operand (the quotient/denominator).
+ * \param[in,out]  instructions        Container in which any prerequisite instructions for temporary variables are
+ *                                     stored.
+ * \param[in]      resultName          Name with which to create the temp var to store the comparison result.
+ * \param[in]      branchType          The opcode describing the desired branching operation.
+ * \param[in]      branchOperandOrder  The operand ordering inside the branch instruction (i.e. does op1 come first?)
+ * \param[in]      valueIfBranchTrue   The value to initialise the result with. This is the value that is kept if the
+ *                                     branch condition is true.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::AddComparisonInstructions(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions,
+    const std::string& resultName,
+    Opcode branchType,
+    BranchOpOrder branchOperandOrder,
+    Literal valueIfBranchTrue
+)
+{
+    /**
+     * Use the following algorithm:
+     *
+     * [resultName] = [valueIfBranchTrue]
+     * [branchType] end [operands in specified order]
+     * [resultName] = ![valueIfBranchTrue]
+     * end:
+     */
+
+    constexpr size_t numInstructionsToAdd{ 3u };
+    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
+    tempIns.reserve( numInstructionsToAdd );
+
+    Operand emptyOp; // Empty operand to use when an operand is not in use.
+
+    std::string result = GetNewTempVar( resultName );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, valueIfBranchTrue, emptyOp ) );
+
+    std::string endLabel = GetNewLabel( "end" );
+    if ( BranchOpOrder::OP1FIRST == branchOperandOrder )
+    {
+        tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, op1, op2 ) );
+    }
+    else if ( BranchOpOrder::OP2FIRST == branchOperandOrder )
+    {
+        tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, op2, op1 ) );
+    }
+    else
+    {
+        LOG_ERROR_AND_THROW( "Unrecognised branch op order: " + std::to_string( branchOperandOrder ),
+                             std::invalid_argument );
+    }
+
+    bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
+    const uint8_t skippableValue{ !branchTrueBool };
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, skippableValue, emptyOp ) );
+
+    SetNextLabel( endLabel );
+
+    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+
+    return result;
+}

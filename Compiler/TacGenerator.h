@@ -27,8 +27,18 @@ public:
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
     Operand Divide( Operand op1, Operand op2, Instructions& instructions );
     Operand Modulo( Operand op1, Operand op2, Instructions& instructions );
+    Operand Equals( Operand op1, Operand op2, Instructions& instructions );
 
 private:
+    enum BranchOpOrder{ OP1FIRST, OP2FIRST };
+    Operand AddComparisonInstructions( Operand op1,
+                                       Operand op2,
+                                       Instructions& instructions,
+                                       const std::string& resultName,
+                                       Opcode branchType,
+                                       BranchOpOrder branchOperandOrder,
+                                       Literal valueIfBranchTrue );
+
     // Whether a desired result is the division result or the modulo, as they share the same set of instructions.
     enum DivMod{ DIV, MOD };
     Operand AddDivModInstructions( Operand op1,
