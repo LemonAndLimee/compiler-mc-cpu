@@ -339,8 +339,8 @@ TacGenerator::AddDivModInstructions(
 /**
  * \brief  Generates the instructions needed for a bool representing the == operation.
  *
- * \param[in]      op1           The first operand (the dividend/numerator).
- * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
  * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
@@ -370,19 +370,252 @@ TacGenerator::Equals(
      * BRE end op1 op2
      * isEq = 0
      * end:
-     *
-     * (return isEq)
      */
 
     const std::string resultName = "isEq";
-    const Literal valueIfTrue{ 1u };
+    const Literal valueIfBranchTrue{ 1u };
     return AddComparisonInstructions( op1,
                                       op2,
                                       instructions,
                                       resultName,
                                       Opcode::BRE,
                                       BranchOpOrder::OP1FIRST,
-                                      valueIfTrue );
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the != operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::NotEquals(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for != must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) != std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isNeq = 0
+     * BRE end op1 op2
+     * isNeq = 1
+     * end:
+     */
+
+    const std::string resultName = "isNeq";
+    const Literal valueIfBranchTrue{ 0u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRE,
+                                      BranchOpOrder::OP1FIRST,
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the <= operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::Leq(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for <= must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) <= std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isLeq = 1
+     * BRGT end op2 op1
+     * isLeq = 0
+     * end:
+     */
+
+    const std::string resultName = "isLeq";
+    const Literal valueIfBranchTrue{ 1u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRGT,
+                                      BranchOpOrder::OP2FIRST,
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the >= operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::Geq(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for >= must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) >= std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isGeq = 1
+     * BRLT end op2 op1
+     * isGeq = 0
+     * end:
+     */
+
+    const std::string resultName = "isGeq";
+    const Literal valueIfBranchTrue{ 1u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRLT,
+                                      BranchOpOrder::OP2FIRST,
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the < operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::LessThan(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for < must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) < std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isLt = 1
+     * BRLT end op1 op2
+     * isLt = 0
+     * end:
+     */
+
+    const std::string resultName = "isLt";
+    const Literal valueIfBranchTrue{ 1u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRLT,
+                                      BranchOpOrder::OP1FIRST,
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the > operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::GreaterThan(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for > must both contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    {
+        Operand literalResult = std::get< Literal >( op1 ) > std::get< Literal >( op2 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * isGt = 1
+     * BRGT end op1 op2
+     * isGt = 0
+     * end:
+     */
+
+    const std::string resultName = "isGt";
+    const Literal valueIfBranchTrue{ 1u };
+    return AddComparisonInstructions( op1,
+                                      op2,
+                                      instructions,
+                                      resultName,
+                                      Opcode::BRGT,
+                                      BranchOpOrder::OP1FIRST,
+                                      valueIfBranchTrue );
 }
 
 /**

@@ -27,7 +27,13 @@ public:
     Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
     Operand Divide( Operand op1, Operand op2, Instructions& instructions );
     Operand Modulo( Operand op1, Operand op2, Instructions& instructions );
+
     Operand Equals( Operand op1, Operand op2, Instructions& instructions );
+    Operand NotEquals( Operand op1, Operand op2, Instructions& instructions );
+    Operand Leq( Operand op1, Operand op2, Instructions& instructions );
+    Operand Geq( Operand op1, Operand op2, Instructions& instructions );
+    Operand LessThan( Operand op1, Operand op2, Instructions& instructions );
+    Operand GreaterThan( Operand op1, Operand op2, Instructions& instructions );
 
 private:
     enum BranchOpOrder{ OP1FIRST, OP2FIRST };
