@@ -110,6 +110,69 @@ public:
         BOOST_CHECK_EQUAL( s.size(), strings.size() );
     }
 
+    enum OpcodeOrder{ OP1FIRST, OP2FIRST };
+    /**
+     * \brief  Checks the instructions generated for a comparison operation. This is a shared set of checks as they
+     *         all share the same pattern.
+     *
+     * \param[in]  branchOpcode       The opcode of the expected branch instruction.
+     * \param[in]  branchOpcodeOrder  The order of the opcodes in the branch instruction.
+     * \param[in]  valueIfBranchTrue  The literal value to initialise the result with at first. This value is returned
+     *                                if the branch condition is true, i.e. the second assignment is skipped.
+     */
+    void
+    CheckComparisonInstructions(
+        Opcode branchOpcode,
+        OpcodeOrder branchOpcodeOrder,
+        Literal valueIfBranchTrue
+    )
+    {
+        m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
+        size_t initialSize{ m_instructions.size() };
+
+        BOOST_CHECK_EQUAL( 1u, initialSize );
+        Operand result = m_generator->Equals( m_literalOp, m_stringOp, m_instructions );
+
+
+        constexpr size_t expectedNumInstructionsAdded{ 3u };
+        BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
+
+        m_currInstrIndex = 0u;
+        BOOST_CHECK_EQUAL( nullptr, m_instructions[m_currInstrIndex] );
+
+
+        m_currInstrIndex = 1u;
+        uint8_t initialValue{ valueIfBranchTrue };
+        CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+        std::string resultId = GetResultIdAndCheckValid();
+
+        m_currInstrIndex = 2u;
+        if ( OpcodeOrder::OP1FIRST == branchOpcodeOrder )
+        {
+            CheckInstrAttributes( branchOpcode, m_literalOp, m_stringOp, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+        }
+        else
+        {
+            CheckInstrAttributes( branchOpcode, m_stringOp, m_literalOp, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+        }
+        std::string endLabel = GetResultIdAndCheckValid();
+
+        m_currInstrIndex = 3u;
+        uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
+        CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+        BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+
+
+        // Check that the end label is returned next time a label is requested.
+        BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+
+        // Check the returned operand is pointing to the result id string
+        BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+        BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
+    }
+
+protected:
+
     // Unit under test
     TacGenerator::Ptr m_generator;
 
@@ -606,41 +669,10 @@ BOOST_AUTO_TEST_CASE( Equals_Success_TwoLiterals )
  */
 BOOST_AUTO_TEST_CASE( Equals_Success_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t initialSize{ m_instructions.size() };
-
-    BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Equals( m_literalOp, m_stringOp, m_instructions );
-
-
-    constexpr size_t expectedNumInstructionsAdded{ 3u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
-
-    m_currInstrIndex = 0u;
-    BOOST_CHECK_EQUAL( nullptr, m_instructions[m_currInstrIndex] );
-
-
-    m_currInstrIndex = 1u;
-    constexpr uint8_t initialValue{ 1u };
-    CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
-
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::BRE, m_literalOp, m_stringOp, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string endLabel = GetResultIdAndCheckValid();
-
-    m_currInstrIndex = 3u;
-    constexpr uint8_t nonBranchValue{ 0u };
-    CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
-
-
-    // Check that the end label is returned next time a label is requested.
-    BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
-
-    // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
-    BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
+    constexpr Opcode branchOpcode{ Opcode::BRE };
+    constexpr OpcodeOrder branchOpcodeOrder{ OpcodeOrder::OP1FIRST };
+    constexpr Literal valueIfTrue{ 1u };
+    CheckComparisonInstructions( branchOpcode, branchOpcodeOrder, valueIfTrue );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // EqualsTests
