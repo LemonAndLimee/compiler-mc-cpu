@@ -128,17 +128,17 @@ TacGenerator::Multiply(
 
     std::string result = GetNewTempVar( "multResult" );
     constexpr uint8_t resultInit{ 0u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, resultInit, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
 
     // Copy operands into new temp vars because the values are edited.
     std::string multiplier = GetNewTempVar( "multiplier" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, Opcode::UNUSED, op1, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, op1 ) );
     std::string multiplicand = GetNewTempVar( "multiplicand" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, Opcode::UNUSED, op2, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, op2 ) );
 
     std::string bitCounter = GetNewTempVar( "bitCounter" );
     constexpr uint8_t bitCtInit{ 8u }; // 8 bits in a byte, which is our current supported literal length.
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( bitCounter, Opcode::UNUSED, bitCtInit, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( bitCounter, bitCtInit ) );
 
 
     // Main loop
@@ -155,9 +155,7 @@ TacGenerator::Multiply(
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::ADD, result, multiplicand ) );
 
     // The location of the BRZ jump - shift the multiplier and multiplicand to move onto the next LSB
-    tempIns.push_back(
-        std::make_shared< ThreeAddrInstruction >( multiplicand, Opcode::LS, multiplicand, emptyOp, shiftLabel )
-    );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, Opcode::LS, multiplicand, emptyOp, shiftLabel ) );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, Opcode::RS, multiplier, emptyOp ) );
 
     constexpr uint8_t decrement{ 1u };
@@ -293,13 +291,13 @@ TacGenerator::AddDivModInstructions(
 
     std::string result = GetNewTempVar( "divResult" );
     constexpr uint8_t resultInit{ 0u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, resultInit, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
 
     // Copy operands into new temp vars because the values are edited.
     std::string dividend = GetNewTempVar( "dividend" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, Opcode::UNUSED, op1, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, op1 ) );
     std::string quotient = GetNewTempVar( "quotient" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( quotient, Opcode::UNUSED, op2, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( quotient, op2 ) );
 
 
     // Main loop
@@ -373,13 +371,12 @@ TacGenerator::Equals(
      */
 
     const std::string resultName = "isEq";
-    const Literal valueIfBranchTrue{ 1u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 1u }; // True if the equals branch succeeds and skips to the end
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRE,
-                                      BranchOpOrder::OP1FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -420,13 +417,12 @@ TacGenerator::NotEquals(
      */
 
     const std::string resultName = "isNeq";
-    const Literal valueIfBranchTrue{ 0u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 0u }; // False if the equals branch succeeds and skips to the end
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRE,
-                                      BranchOpOrder::OP1FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -460,20 +456,19 @@ TacGenerator::Leq(
     /**
      * Use the following algorithm:
      *
-     * isLeq = 1
-     * BRGT end op2 op1
      * isLeq = 0
+     * BRGT end op1 op2
+     * isLeq = 1
      * end:
      */
 
     const std::string resultName = "isLeq";
-    const Literal valueIfBranchTrue{ 1u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 0u }; // False if op1 > op2, as this is !(<=)
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRGT,
-                                      BranchOpOrder::OP2FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -507,20 +502,19 @@ TacGenerator::Geq(
     /**
      * Use the following algorithm:
      *
-     * isGeq = 1
-     * BRLT end op2 op1
      * isGeq = 0
+     * BRLT end op1 op2
+     * isGeq = 1
      * end:
      */
 
     const std::string resultName = "isGeq";
-    const Literal valueIfBranchTrue{ 1u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 0u }; // False if op1 < op2, as this is !(>=)
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRLT,
-                                      BranchOpOrder::OP2FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -561,13 +555,12 @@ TacGenerator::LessThan(
      */
 
     const std::string resultName = "isLt";
-    const Literal valueIfBranchTrue{ 1u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 1u }; // True if the less than branch is successful.
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRLT,
-                                      BranchOpOrder::OP1FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -608,13 +601,12 @@ TacGenerator::GreaterThan(
      */
 
     const std::string resultName = "isGt";
-    const Literal valueIfBranchTrue{ 1u };
-    return AddComparisonInstructions( op1,
-                                      op2,
-                                      instructions,
+    const Literal valueIfBranchTrue{ 1u }; // True if the greater than branch is successful.
+    return AddComparisonInstructions( instructions,
                                       resultName,
                                       Opcode::BRGT,
-                                      BranchOpOrder::OP1FIRST,
+                                      op1,
+                                      op2,
                                       valueIfBranchTrue );
 }
 
@@ -622,26 +614,23 @@ TacGenerator::GreaterThan(
  * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
  *         pattern, this is a shared utility method.
  *
- * \param[in]      op1                 The first operand (the dividend/numerator).
- * \param[in]      op2                 The second operand (the quotient/denominator).
  * \param[in,out]  instructions        Container in which any prerequisite instructions for temporary variables are
  *                                     stored.
  * \param[in]      resultName          Name with which to create the temp var to store the comparison result.
  * \param[in]      branchType          The opcode describing the desired branching operation.
- * \param[in]      branchOperandOrder  The operand ordering inside the branch instruction (i.e. does op1 come first?)
- * \param[in]      valueIfBranchTrue   The value to initialise the result with. This is the value that is kept if the
- *                                     branch condition is true.
+ * \param[in]      branchOperand1      The first operand in the branch instruction.
+ * \param[in]      branchOperand2      The second operand in the branch instruction.
+ * \param[in]      valueIfBranchTrue   The value the result will have if branch condition is true.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::AddComparisonInstructions(
-    Operand op1,
-    Operand op2,
     Instructions& instructions,
     const std::string& resultName,
     Opcode branchType,
-    BranchOpOrder branchOperandOrder,
+    Operand branchOperand1,
+    Operand branchOperand2,
     Literal valueIfBranchTrue
 )
 {
@@ -658,29 +647,15 @@ TacGenerator::AddComparisonInstructions(
     Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
     tempIns.reserve( numInstructionsToAdd );
 
-    Operand emptyOp; // Empty operand to use when an operand is not in use.
-
     std::string result = GetNewTempVar( resultName );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, valueIfBranchTrue, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
 
     std::string endLabel = GetNewLabel( "end" );
-    if ( BranchOpOrder::OP1FIRST == branchOperandOrder )
-    {
-        tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, op1, op2 ) );
-    }
-    else if ( BranchOpOrder::OP2FIRST == branchOperandOrder )
-    {
-        tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, op2, op1 ) );
-    }
-    else
-    {
-        LOG_ERROR_AND_THROW( "Unrecognised branch op order: " + std::to_string( branchOperandOrder ),
-                             std::invalid_argument );
-    }
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, branchOperand1, branchOperand2 ) );
 
     bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
     const uint8_t skippableValue{ !branchTrueBool };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::UNUSED, skippableValue, emptyOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, skippableValue ) );
 
     SetNextLabel( endLabel );
 

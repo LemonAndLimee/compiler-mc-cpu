@@ -36,13 +36,11 @@ public:
     Operand GreaterThan( Operand op1, Operand op2, Instructions& instructions );
 
 private:
-    enum BranchOpOrder{ OP1FIRST, OP2FIRST };
-    Operand AddComparisonInstructions( Operand op1,
-                                       Operand op2,
-                                       Instructions& instructions,
+    Operand AddComparisonInstructions( Instructions& instructions,
                                        const std::string& resultName,
                                        Opcode branchType,
-                                       BranchOpOrder branchOperandOrder,
+                                       Operand branchOperand1,
+                                       Operand branchOperand2,
                                        Literal valueIfBranchTrue );
 
     // Whether a desired result is the division result or the modulo, as they share the same set of instructions.
