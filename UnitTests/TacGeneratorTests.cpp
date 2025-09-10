@@ -165,14 +165,15 @@ protected:
     // Unit under test
     TacGenerator::Ptr m_generator;
 
-    // Some pre-defined example operands to be used in tests. Two copies of each type so separate instances of both
-    // types can be passed to a method if needed.
-    Operand m_emptyOp{};
-    Operand m_emptyOp2{};
-    Operand m_stringOp{ "identifier" };
-    Operand m_stringOp2{ "identifier2" };
-    Operand m_literalOp_Five{ 5u };
-    Operand m_literalOp_Two{ 2u };
+    // Some pre-defined example operands to be used in tests.
+    const Operand c_emptyOp{};
+    const Operand c_stringOp{ "identifier" };
+    const Operand c_stringOp2{ "identifier2" };
+    const Operand c_literalOp_Five{ 5u };
+    const Operand c_literalOp_Two{ 2u };
+    const Operand c_zeroOperand{ 0u };
+    const Literal c_trueLiteral{ 1u };
+    const Literal c_falseLiteral{ 0u };
 
     // Instructions vector to be passed to generate methods.
     Instructions m_instructions;
@@ -224,22 +225,22 @@ BOOST_AUTO_TEST_SUITE( MultiplyTests )
  */
 BOOST_AUTO_TEST_CASE( Multiply_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Multiply( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Multiply( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Multiply( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for multiplication will return a numeric value with the operation result
  * if both operands are literals, and does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Multiply_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Multiply_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Multiply( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->Multiply( c_literalOp_Five, c_literalOp_Two, m_instructions );
 
-    Literal literal1{ std::get< Literal >( m_literalOp_Five ) };
-    Literal literal2{ std::get< Literal >( m_literalOp_Two ) };
+    Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
+    Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 * literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
@@ -254,13 +255,13 @@ BOOST_AUTO_TEST_CASE( Multiply_Success_TwoLiterals )
  * We expect a shift-and-add algorithm to be used where the LSB of the multiplier is used to determine whether to shift
  * the multiplicand, as it is added to a total.
  */
-BOOST_AUTO_TEST_CASE( Multiply_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Multiply_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t initialSize{ m_instructions.size() };
 
     BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Multiply( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Multiply( c_literalOp_Five, c_stringOp, m_instructions );
 
     /**
      * Expect the following algorithm:
@@ -295,11 +296,11 @@ BOOST_AUTO_TEST_CASE( Multiply_Success_Identifier )
     std::string resultId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, m_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string multiplierId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, m_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string multiplicandId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 4u;
@@ -369,9 +370,9 @@ BOOST_AUTO_TEST_SUITE( DivideTests )
  */
 BOOST_AUTO_TEST_CASE( Divide_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Divide( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Divide( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Divide( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
@@ -379,22 +380,20 @@ BOOST_AUTO_TEST_CASE( Divide_InvalidOperands )
  */
 BOOST_AUTO_TEST_CASE( DivideByZero )
 {
-    Operand zeroOperand{ 0u };
-
-    BOOST_CHECK_THROW( m_generator->Divide( m_stringOp, zeroOperand, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_zeroOperand, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for division will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Divide_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Divide_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Divide( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->Divide( c_literalOp_Five, c_literalOp_Two, m_instructions );
 
-    Literal literal1{ std::get< Literal >( m_literalOp_Five ) };
-    Literal literal2{ std::get< Literal >( m_literalOp_Two ) };
+    Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
+    Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 / literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
@@ -408,13 +407,13 @@ BOOST_AUTO_TEST_CASE( Divide_Success_TwoLiterals )
  *
  * We expect a repeated subtraction algorithm to be used.
  */
-BOOST_AUTO_TEST_CASE( Divide_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Divide_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t initialSize{ m_instructions.size() };
 
     BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Divide( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Divide( c_literalOp_Five, c_stringOp, m_instructions );
 
     /**
      * Expect the following algorithm:
@@ -446,11 +445,11 @@ BOOST_AUTO_TEST_CASE( Divide_Success_Identifier )
     std::string resultId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, m_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string dividendId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, m_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string quotientId = GetResultIdAndCheckValid();
 
     // Main loop:
@@ -496,9 +495,9 @@ BOOST_AUTO_TEST_SUITE( ModuloTests )
  */
 BOOST_AUTO_TEST_CASE( Modulo_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Modulo( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Modulo( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Modulo( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
@@ -506,21 +505,20 @@ BOOST_AUTO_TEST_CASE( Modulo_InvalidOperands )
  */
 BOOST_AUTO_TEST_CASE( ModuloByZero )
 {
-    Operand zeroOperand{ 0u };
-    BOOST_CHECK_THROW( m_generator->Modulo( m_stringOp, zeroOperand, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_zeroOperand, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for modulo will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Modulo_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Modulo_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Modulo( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->Modulo( c_literalOp_Five, c_literalOp_Two, m_instructions );
 
-    Literal literal1{ std::get< Literal >( m_literalOp_Five ) };
-    Literal literal2{ std::get< Literal >( m_literalOp_Two ) };
+    Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
+    Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 % literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
@@ -534,13 +532,13 @@ BOOST_AUTO_TEST_CASE( Modulo_Success_TwoLiterals )
  *
  * We expect a repeated subtraction algorithm to be used.
  */
-BOOST_AUTO_TEST_CASE( Modulo_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Modulo_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t initialSize{ m_instructions.size() };
 
     BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Modulo( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Modulo( c_literalOp_Five, c_stringOp, m_instructions );
 
     /**
      * Expect the following algorithm:
@@ -572,11 +570,11 @@ BOOST_AUTO_TEST_CASE( Modulo_Success_Identifier )
     std::string resultId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, m_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string dividendId = GetResultIdAndCheckValid();
 
     m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, m_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
     std::string quotientId = GetResultIdAndCheckValid();
 
     // Main loop:
@@ -624,30 +622,28 @@ BOOST_AUTO_TEST_SUITE( EqualsTests )
  */
 BOOST_AUTO_TEST_CASE( Equals_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Equals( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Equals( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Equals( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for == will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Equals_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Equals_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // False case
-    Operand result = m_generator->Equals( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->Equals( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result ) );
 
     // True case
-    Operand result2 = m_generator->Equals( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Equals( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -656,16 +652,16 @@ BOOST_AUTO_TEST_CASE( Equals_Success_TwoLiterals )
  * Tests that the method for generating TAC for == will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( Equals_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Equals_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->Equals( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Equals( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 1u };
-    CheckComparisonInstructions( Opcode::BRE, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_trueLiteral;
+    CheckComparisonInstructions( Opcode::BRE, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // EqualsTests
@@ -677,30 +673,28 @@ BOOST_AUTO_TEST_SUITE( NotEqualsTests )
  */
 BOOST_AUTO_TEST_CASE( NotEquals_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->NotEquals( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->NotEquals( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->NotEquals( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for != will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( NotEquals_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( NotEquals_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // True case
-    Operand result = m_generator->NotEquals( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case
-    Operand result2 = m_generator->NotEquals( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -709,16 +703,16 @@ BOOST_AUTO_TEST_CASE( NotEquals_Success_TwoLiterals )
  * Tests that the method for generating TAC for != will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( NotEquals_Success_Identifier )
+BOOST_AUTO_TEST_CASE( NotEquals_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->NotEquals( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->NotEquals( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 0u };
-    CheckComparisonInstructions( Opcode::BRE, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_falseLiteral;
+    CheckComparisonInstructions( Opcode::BRE, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // NotEqualsTests
@@ -730,35 +724,33 @@ BOOST_AUTO_TEST_SUITE( LeqTests )
  */
 BOOST_AUTO_TEST_CASE( Leq_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Leq( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Leq( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Leq( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for <= will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Leq_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Leq_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // True case - less than
-    Operand result = m_generator->Leq( m_literalOp_Two, m_literalOp_Five, m_instructions );
+    Operand result = m_generator->Leq( c_literalOp_Two, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // True case - equals
-    Operand result2 = m_generator->Leq( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Leq( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     // False case - greater than
-    Operand result3 = m_generator->Leq( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result3 = m_generator->Leq( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -767,16 +759,16 @@ BOOST_AUTO_TEST_CASE( Leq_Success_TwoLiterals )
  * Tests that the method for generating TAC for <= will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( Leq_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Leq_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->Leq( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Leq( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 0u }; // False if op1 > op2
-    CheckComparisonInstructions( Opcode::BRGT, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_falseLiteral; // False if op1 > op2
+    CheckComparisonInstructions( Opcode::BRGT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // LeqTests
@@ -788,35 +780,33 @@ BOOST_AUTO_TEST_SUITE( GeqTests )
  */
 BOOST_AUTO_TEST_CASE( Geq_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Geq( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Geq( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Geq( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for >= will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( Geq_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( Geq_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // True case - greater than
-    Operand result = m_generator->Geq( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->Geq( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // True case - equals
-    Operand result2 = m_generator->Geq( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Geq( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     // False case - less than
-    Operand result3 = m_generator->Geq( m_literalOp_Two, m_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->Geq( c_literalOp_Two, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -825,16 +815,16 @@ BOOST_AUTO_TEST_CASE( Geq_Success_TwoLiterals )
  * Tests that the method for generating TAC for >= will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( Geq_Success_Identifier )
+BOOST_AUTO_TEST_CASE( Geq_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->Geq( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->Geq( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 0u }; // False if op1 < op2
-    CheckComparisonInstructions( Opcode::BRLT, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_falseLiteral; // False if op1 < op2
+    CheckComparisonInstructions( Opcode::BRLT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GeqTests
@@ -846,35 +836,33 @@ BOOST_AUTO_TEST_SUITE( LessThanTests )
  */
 BOOST_AUTO_TEST_CASE( LessThan_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->LessThan( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LessThan( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LessThan( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for < will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( LessThan_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( LessThan_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // False case - greater than
-    Operand result = m_generator->LessThan( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->LessThan( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result ) );
 
     // False case - equals
-    Operand result2 = m_generator->LessThan( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->LessThan( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     // True case - less than
-    Operand result3 = m_generator->LessThan( m_literalOp_Two, m_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->LessThan( c_literalOp_Two, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result3 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -883,16 +871,16 @@ BOOST_AUTO_TEST_CASE( LessThan_Success_TwoLiterals )
  * Tests that the method for generating TAC for < will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( LessThan_Success_Identifier )
+BOOST_AUTO_TEST_CASE( LessThan_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->LessThan( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->LessThan( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 1u };
-    CheckComparisonInstructions( Opcode::BRLT, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_trueLiteral;
+    CheckComparisonInstructions( Opcode::BRLT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // LessThanTests
@@ -904,35 +892,33 @@ BOOST_AUTO_TEST_SUITE( GreaterThanTests )
  */
 BOOST_AUTO_TEST_CASE( GreaterThan_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->GreaterThan( m_emptyOp, m_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->GreaterThan( m_stringOp, m_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->GreaterThan( m_emptyOp, m_emptyOp2, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for > will return a numeric value with the operation result
  * if both operands are literals, and it does not add any instructions to the given container.
  */
-BOOST_AUTO_TEST_CASE( GreaterThan_Success_TwoLiterals )
+BOOST_AUTO_TEST_CASE( GreaterThan_TwoLiterals )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    constexpr Literal trueValue{ true };
-    constexpr Literal falseValue{ false };
 
     // True case - greater than
-    Operand result = m_generator->GreaterThan( m_literalOp_Five, m_literalOp_Two, m_instructions );
+    Operand result = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Two, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
-    BOOST_CHECK_EQUAL( trueValue, std::get< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case - equals
-    Operand result2 = m_generator->GreaterThan( m_literalOp_Five, m_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     // False case - less than
-    Operand result3 = m_generator->GreaterThan( m_literalOp_Two, m_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->GreaterThan( c_literalOp_Two, c_literalOp_Five, m_instructions );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
-    BOOST_CHECK_EQUAL( falseValue, std::get< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
 
     BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
@@ -941,19 +927,311 @@ BOOST_AUTO_TEST_CASE( GreaterThan_Success_TwoLiterals )
  * Tests that the method for generating TAC for > will return an identifier of a temporary storage of the
  * result, and that the necessary pre-instructions are appended to the given container.
  */
-BOOST_AUTO_TEST_CASE( GreaterThan_Success_Identifier )
+BOOST_AUTO_TEST_CASE( GreaterThan_Identifier )
 {
     m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
     size_t currInstructionsSize{ m_instructions.size() };
     BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
 
-    Operand result = m_generator->GreaterThan( m_literalOp_Five, m_stringOp, m_instructions );
+    Operand result = m_generator->GreaterThan( c_literalOp_Five, c_stringOp, m_instructions );
 
-    constexpr Literal valueIfTrue{ 1u };
-    CheckComparisonInstructions( Opcode::BRGT, m_literalOp_Five, m_stringOp, valueIfTrue, currInstructionsSize, result );
+    const Literal valueIfTrue = c_trueLiteral;
+    CheckComparisonInstructions( Opcode::BRGT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GreaterThanTests
+
+BOOST_AUTO_TEST_SUITE( LogicalNotTests )
+
+/**
+ * Tests that the method for generating TAC for logical NOT will throw an error if the  operand is empty.
+ */
+BOOST_AUTO_TEST_CASE( LogicalNot_InvalidOperands )
+{
+    BOOST_CHECK_THROW( m_generator->LogicalNot( c_emptyOp, m_instructions ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for generating TAC for logical NOT will return a numeric value with the operation result
+ * ifthe operand is a literal, and it does not add any instructions to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalNot_Literal )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+
+    // True case
+    Operand result = m_generator->LogicalNot( c_zeroOperand, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
+
+    // False case
+    Operand result2 = m_generator->LogicalNot( c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
+
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for logical NOT will return an identifier of a temporary storage of the
+ * result, and that the necessary pre-instructions are appended to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalNot_Identifier )
+{
+    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
+    size_t currInstructionsSize{ m_instructions.size() };
+    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
+
+    Operand result = m_generator->LogicalNot( c_stringOp, m_instructions );
+
+    const Literal valueIfTrue = c_trueLiteral;
+    CheckComparisonInstructions( Opcode::BRGT, c_stringOp, c_zeroOperand, valueIfTrue, currInstructionsSize, result );
+}
+
+BOOST_AUTO_TEST_SUITE_END() // LogicalNotTests
+
+BOOST_AUTO_TEST_SUITE( LogicalOrTests )
+
+/**
+ * Tests that the method for generating TAC for logical OR will throw an error if either operand is empty.
+ */
+BOOST_AUTO_TEST_CASE( LogicalOr_InvalidOperands )
+{
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for generating TAC for logical OR will return a numeric value with the operation result
+ * if both operands are literals, and it does not add any instructions to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalOr_TwoLiterals )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+
+    // True case - both >0
+    Operand result = m_generator->LogicalOr( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
+
+    // True case - one operand is >0, one ==0
+    Operand result2 = m_generator->LogicalOr( c_zeroOperand, c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
+
+    // False case - both zero
+    Operand result3 = m_generator->LogicalOr( c_zeroOperand, c_zeroOperand, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
+
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for logical OR will return a true value if one operand is a literal
+ * representing a >0 value, and it will return the other operand if the literal is 0. Check it does not add any
+ * instructions to the instructions container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalOr_OneLiteral )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+
+    // True case - the literal is >0
+
+    Operand trueResult1 = m_generator->LogicalOr( c_literalOp_Five, c_stringOp, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( trueResult1 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( trueResult1 ) );
+
+    Operand trueResult2 = m_generator->LogicalOr( c_stringOp, c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( trueResult2 ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( trueResult2 ) );
+
+
+    // The literal is 0
+
+    Operand op2Return = m_generator->LogicalOr( c_zeroOperand, c_stringOp, m_instructions );
+    // Expect it to return operand 2 in this case.
+    BOOST_REQUIRE( std::holds_alternative< std::string >( op2Return ) );
+    BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op2Return ) );
+
+    Operand op1Return = m_generator->LogicalOr( c_stringOp, c_zeroOperand, m_instructions );
+    // Expect it to return operand 2 in this case.
+    BOOST_REQUIRE( std::holds_alternative< std::string >( op1Return ) );
+    BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op1Return ) );
+
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for logical OR will return an identifier of a temporary storage of the
+ * result, and that the necessary pre-instructions are appended to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalOr_TwoIdentifiers )
+{
+    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
+    size_t currInstructionsSize{ m_instructions.size() };
+    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
+
+    const Opcode expectedBranchOpcode{ BRGT };
+    const Operand operand1{ c_stringOp };
+    const Operand operand2{ c_stringOp2 };
+    const Literal valueIfBranchTrue{ c_trueLiteral };
+
+    Operand result = m_generator->LogicalOr( operand1, operand2, m_instructions );
+
+
+    constexpr size_t expectedNumInstructionsAdded{ 4u };
+    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + currInstructionsSize, m_instructions.size() );
+
+    m_currInstrIndex = 1u;
+    uint8_t initialValue{ valueIfBranchTrue };
+    CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string resultId = GetResultIdAndCheckValid();
+
+    m_currInstrIndex = 2u;
+    CheckInstrAttributes( expectedBranchOpcode, operand1, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string endLabel = GetResultIdAndCheckValid();
+    m_currInstrIndex = 3u;
+    CheckInstrAttributes( expectedBranchOpcode, operand2, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( endLabel, GetResultIdAndCheckValid() );
+
+    m_currInstrIndex = 4u;
+    uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
+    CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+
+    // Check that the end label is returned next time a label is requested.
+    BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END() // LogicalOrTests
+
+BOOST_AUTO_TEST_SUITE( LogicalAndTests )
+
+/**
+ * Tests that the method for generating TAC for logical AND will throw an error if either operand is empty.
+ */
+BOOST_AUTO_TEST_CASE( LogicalAnd_InvalidOperands )
+{
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for generating TAC for logical AND will return a numeric value with the operation result
+ * if both operands are literals, and it does not add any instructions to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalAnd_TwoLiterals )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+
+    // True case - both >0
+    Operand result = m_generator->LogicalAnd( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
+    BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
+
+    // False case - one operand is >0, one ==0
+    Operand result2 = m_generator->LogicalAnd( c_zeroOperand, c_literalOp_Two, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
+
+    // False case - both zero
+    Operand result3 = m_generator->LogicalAnd( c_zeroOperand, c_zeroOperand, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
+
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for logical AND will return a literal "false" value if one of the
+ * operands is a literal storing the value "false". This is because regardless of the other value, it will resolve
+ * to false.
+ * If one operand is "true", it should return the other operand.
+ */
+BOOST_AUTO_TEST_CASE( LogicalAnd_OneLiteral )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+
+    // False case - the literal is 0
+
+    Operand falseResult1 = m_generator->LogicalAnd( c_zeroOperand, c_stringOp, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( falseResult1 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( falseResult1 ) );
+
+    Operand falseResult2 = m_generator->LogicalAnd( c_stringOp, c_zeroOperand, m_instructions );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( falseResult2 ) );
+    BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( falseResult2 ) );
+
+
+    // The literal is >0
+
+    Operand op2Return = m_generator->LogicalAnd( c_literalOp_Two, c_stringOp, m_instructions );
+    // Expect it to return operand 2 in this case.
+    BOOST_REQUIRE( std::holds_alternative< std::string >( op2Return ) );
+    BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op2Return ) );
+
+    Operand op1Return = m_generator->LogicalAnd( c_stringOp, c_literalOp_Two, m_instructions );
+    // Expect it to return operand 1 in this case.
+    BOOST_REQUIRE( std::holds_alternative< std::string >( op1Return ) );
+    BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op1Return ) );
+
+    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+}
+
+/**
+ * Tests that the method for generating TAC for logical AND will return an identifier of a temporary storage of the
+ * result, and that the necessary pre-instructions are appended to the given container.
+ */
+BOOST_AUTO_TEST_CASE( LogicalAnd_TwoIdentifiers )
+{
+    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
+    size_t currInstructionsSize{ m_instructions.size() };
+    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
+
+    const Opcode expectedBranchOpcode{ BRGT };
+    const Operand operand1{ c_stringOp };
+    const Operand operand2{ c_stringOp2 };
+    const Literal valueIfBranchTrue{ c_falseLiteral };
+
+    Operand result = m_generator->LogicalAnd( operand1, operand2, m_instructions );
+
+
+    constexpr size_t expectedNumInstructionsAdded{ 4u };
+    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + currInstructionsSize, m_instructions.size() );
+
+    m_currInstrIndex = 1u;
+    uint8_t initialValue{ valueIfBranchTrue };
+    CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string resultId = GetResultIdAndCheckValid();
+
+    m_currInstrIndex = 2u;
+    CheckInstrAttributes( expectedBranchOpcode, operand1, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    std::string endLabel = GetResultIdAndCheckValid();
+    m_currInstrIndex = 3u;
+    CheckInstrAttributes( expectedBranchOpcode, operand2, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( endLabel, GetResultIdAndCheckValid() );
+
+    m_currInstrIndex = 4u;
+    uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
+    CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
+    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+
+    // Check that the end label is returned next time a label is requested.
+    BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
+}
+
+BOOST_AUTO_TEST_SUITE_END() // LogicalAndTests
 
 BOOST_AUTO_TEST_SUITE_END() // ComparisonTests
 

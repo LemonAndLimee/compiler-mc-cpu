@@ -35,6 +35,10 @@ public:
     Operand LessThan( Operand op1, Operand op2, Instructions& instructions );
     Operand GreaterThan( Operand op1, Operand op2, Instructions& instructions );
 
+    Operand LogicalNot( Operand op1, Instructions& instructions );
+    Operand LogicalOr( Operand op1, Operand op2, Instructions& instructions );
+    Operand LogicalAnd( Operand op1, Operand op2, Instructions& instructions );
+
 private:
     Operand AddComparisonInstructions( Instructions& instructions,
                                        const std::string& resultName,

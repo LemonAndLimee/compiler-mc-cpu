@@ -663,3 +663,235 @@ TacGenerator::AddComparisonInstructions(
 
     return result;
 }
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the ! operation.
+ *
+ * \param[in]      op1           The operand being logically inverted.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::LogicalNot(
+    Operand op1,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operand for ! must contain a value.", std::invalid_argument );
+    }
+
+    if ( std::holds_alternative< Literal >( op1 ) )
+    {
+        Operand literalResult = !std::get< Literal >( op1 );
+        return literalResult;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * not = 1
+     * BRGT end op1 0
+     * not = 0
+     * end:
+     */
+
+    const std::string resultName = "not";
+    const Literal valueIfBranchTrue{ 1u }; // True if the operand is >0, therefore !op = 1, as the branch succeeded.
+    const Operand zeroOp{ 0u };
+    return AddComparisonInstructions( instructions,
+                                      resultName,
+                                      Opcode::BRGT,
+                                      op1,
+                                      zeroOp,
+                                      valueIfBranchTrue );
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the logical OR operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::LogicalOr(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for || must both contain a value.", std::invalid_argument );
+    }
+
+    bool isOp1ZeroLiteral{ false };
+    if ( std::holds_alternative< Literal >( op1 ) )
+    {
+        if ( std::get< Literal >( op1 ) > 0 )
+        {
+            Operand isTrue{ 1u };
+            return isTrue;
+        }
+        isOp1ZeroLiteral = true;
+    }
+
+    if ( std::holds_alternative< uint8_t >( op2 ) )
+    {
+        if ( std::get< Literal >( op2 ) > 0 )
+        {
+            Operand isTrue{ 1u };
+            return isTrue;
+        }
+        // If we reach this point and op1 is literal, this means both op1 and op2 are zero
+        else if ( isOp1ZeroLiteral )
+        {
+            Operand isFalse{ 0u };
+            return isFalse;
+        }
+        // If op2 is 0 and op1 is not a literal, this means the truth table resolves to "op1", so we can
+        // simply return op1
+        else
+        {
+            return op1;
+        }
+    }
+    // If we reach this point, op2 is not a literal, so we should return op2
+    else if ( isOp1ZeroLiteral )
+    {
+        return op2;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * or = 1
+     * // branch to the end (i.e. keeping the 'true' result) if either op1 or op2 is true
+     * BRGT end op1 0
+     * BRGT end op2 0
+     * or = 0
+     * end:
+     */
+
+    const Literal valueIfBranchTrue{ 1u }; // True if either greater than branch is successful.
+    const Literal valueIfBranchFalse{ 0u };
+
+    constexpr size_t numInstructionsToAdd{ 4u };
+    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
+    tempIns.reserve( numInstructionsToAdd );
+
+    const std::string resultName = "isGt";
+    std::string result = GetNewTempVar( resultName );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
+
+    const Operand zeroOp{ 0u };
+    std::string endLabel = GetNewLabel( "end" );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
+
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
+
+    SetNextLabel( endLabel );
+
+    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+
+    return result;
+}
+
+/**
+ * \brief  Generates the instructions needed for a bool representing the logical AND operation.
+ *
+ * \param[in]      op1           The first operand.
+ * \param[in]      op2           The second operand.
+ * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacGenerator::LogicalAnd(
+    Operand op1,
+    Operand op2,
+    Instructions& instructions
+)
+{
+    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    {
+        LOG_ERROR_AND_THROW( "Operands for && must both contain a value.", std::invalid_argument );
+    }
+
+    bool op1IsTrueLiteral{ false };
+    if ( std::holds_alternative< Literal >( op1 ) )
+    {
+        if ( std::get< Literal >( op1 ) <= 0 )
+        {
+            Operand falseResult{ 0u };
+            return falseResult;
+        }
+        op1IsTrueLiteral = true;
+    }
+    if ( std::holds_alternative< uint8_t >( op2 ) )
+    {
+        if ( std::get< Literal >( op2 ) <= 0 )
+        {
+            Operand falseResult{ 0u };
+            return falseResult;
+        }
+        // If both operands hold a true value literal
+        else if ( op1IsTrueLiteral )
+        {
+            Operand trueResult{ 1u };
+            return trueResult;
+        }
+        // If op2 holds a true result but op1 is not a literal, return op1
+        else
+        {
+            return op1;
+        }
+    }
+    // If op1 is true literal but op2 is not a literal, return op2
+    else if ( op1IsTrueLiteral )
+    {
+        return op2;
+    }
+
+    /**
+     * Use the following algorithm:
+     *
+     * and = 0
+     * // branch to the end (i.e. keeping the 'false' result) if either op1 or op2 is true
+     * // therefore, the 'true' result is only reached if both ops are true
+     * BRGT end op1 0
+     * BRGT end op2 0
+     * and = 1
+     * end:
+     */
+
+    const Literal valueIfBranchTrue{ 0u }; // True if either greater than branch is successful.
+    const Literal valueIfBranchFalse{ 1u };
+
+    constexpr size_t numInstructionsToAdd{ 4u };
+    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
+    tempIns.reserve( numInstructionsToAdd );
+
+    const std::string resultName = "isGt";
+    std::string result = GetNewTempVar( resultName );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
+
+    const Operand zeroOp{ 0u };
+    std::string endLabel = GetNewLabel( "end" );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
+
+    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
+
+    SetNextLabel( endLabel );
+
+    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+
+    return result;
+}
