@@ -284,25 +284,53 @@ IntermediateCode::GetExpressionInfo(
         // For more complex cases like divide, will need to generate pre-instructions
         else
         {
-            // TODO: call on the TAC generator to create pre-instructions
+            // Call on the TAC generator to create pre-instructions, and return an operand pointing to where the result
+            // is being stored. Use this returned operand to return an assignment expression from this method.
             switch ( nodeLabel )
             {
             case T::MULTIPLY:
+                operand1 = m_tacGenerator->Multiply( lhs, rhs, preInstructions );
+                break;
             case T::DIVIDE:
+                operand1 = m_tacGenerator->Divide( lhs, rhs, preInstructions );
+                break;
             case T::MOD:
+                operand1 = m_tacGenerator->Modulo( lhs, rhs, preInstructions );
+                break;
             case T::EQ:
+                operand1 = m_tacGenerator->Equals( lhs, rhs, preInstructions );
+                break;
             case T::NEQ:
+                operand1 = m_tacGenerator->NotEquals( lhs, rhs, preInstructions );
+                break;
             case T::LEQ:
+                operand1 = m_tacGenerator->Leq( lhs, rhs, preInstructions );
+                break;
             case T::GEQ:
+                operand1 = m_tacGenerator->Geq( lhs, rhs, preInstructions );
+                break;
             case T::LT:
+                operand1 = m_tacGenerator->LessThan( lhs, rhs, preInstructions );
+                break;
             case T::GT:
-            case T::NOT:
+                operand1 = m_tacGenerator->GreaterThan( lhs, rhs, preInstructions );
+                break;
+            case T::NOT: // Logical NOT
+                if ( !std::holds_alternative< std::monostate >( rhs ) )
+                {
+                    LOG_ERROR_AND_THROW( "Cannot generate intermediate code for NOT operation with 2 operands.",
+                                         std::invalid_argument );
+                }
+                operand1 = m_tacGenerator->LogicalNot( lhs, preInstructions );
+                break;
             case T::OR:  // Logical OR
+                operand1 = m_tacGenerator->LogicalOr( lhs, rhs, preInstructions );
+                break;
             case T::AND: // Logical AND
-                LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
+                operand1 = m_tacGenerator->LogicalAnd( lhs, rhs, preInstructions );
                 break;
             default:
-                LOG_ERROR_AND_THROW( "Invalid node label for expression: "
+                LOG_ERROR_AND_THROW( "Invalid or unrecognised node label for expression: "
                                      + GrammarSymbols::ConvertSymbolToString( nodeLabel ), std::invalid_argument );
                 break;
             }
