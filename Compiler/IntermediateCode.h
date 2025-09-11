@@ -30,16 +30,16 @@ private:
     void ConvertAssign( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
     std::string GetIdentifierFromLhsNode( AstNode::Ptr lhsNode );
 
-    void ConvertIfElse( AstNode::Ptr astNode, Instructions& instructions );
-    void ConvertForLoop( AstNode::Ptr astNode, Instructions& instructions );
-    void ConvertWhileLoop( AstNode::Ptr astNode, Instructions& instructions );
+    void ConvertIfElse( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    void ConvertForLoop( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    void ConvertWhileLoop( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
 
     std::string CalculateUniqueIdentifier( const std::string& currentIdentifier, SymbolTable::Ptr symbolTable );
 
     using ExpressionInfo = std::tuple< Opcode, Operand, Operand >;
     ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode,
-                                      SymbolTable::Ptr currentSt,
-                                      Instructions& preInstructions );
+                                      Instructions& preInstructions,
+                                      SymbolTable::Ptr currentSt );
     Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
 
     // Object responsible for converting complex operations and creating new instructions.

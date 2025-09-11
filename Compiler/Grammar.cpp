@@ -58,8 +58,7 @@ GrammarSymbols::ConvertSymbolToString(
     }
     else
     {
-        LOG_ERROR_AND_THROW( "Unknown symbol (" + std::to_string( symbol ) + ") type: " + std::to_string( symbolType )
-                             + " returned by GetSymbolType()", std::invalid_argument );
+        return "UNKNOWN (" + std::to_string( symbol ) + ")";
     }
 }
 

@@ -77,13 +77,13 @@ IntermediateCode::ConvertAstToInstructions(
             ConvertAssign( astNode, instructions, currentSt );
             break;
         case T::IF:
-            ConvertIfElse( astNode, instructions );
+            ConvertIfElse( astNode, instructions, currentSt );
             break;
         case T::FOR:
-            ConvertForLoop( astNode, instructions );
+            ConvertForLoop( astNode, instructions, currentSt );
             break;
         case T::WHILE:
-            ConvertWhileLoop( astNode, instructions );
+            ConvertWhileLoop( astNode, instructions, currentSt );
             break;
         default:
             LOG_ERROR_AND_THROW( "Node label not suitable for an instruction: " + nodeLabelString,
@@ -149,7 +149,7 @@ IntermediateCode::ConvertAssign(
     // RHS should either be a literal, an ID, or an expression (which may need breaking down further).
     AstNode::Ptr rhsNode = children[1];
     Instructions prerequisiteInstructions{};
-    ExpressionInfo expressionInfo = GetExpressionInfo( rhsNode, currentSt, prerequisiteInstructions );
+    ExpressionInfo expressionInfo = GetExpressionInfo( rhsNode, prerequisiteInstructions, currentSt );
 
 
     // Create assignment statement from the expression info, targeting the LHS identifier.
@@ -231,16 +231,16 @@ IntermediateCode::CalculateUniqueIdentifier(
  *         used for the operand(s)).
  *
  * \param[in]   expressionNode   The AST node representing the expression being converted.
- * \param[in]   currentSt        The current symbol table of this scope.
  * \param[out]  preInstructions  Container in which any prerequisite instructions for temporary variables are stored.
+ * \param[in]   currentSt        The current symbol table of this scope.
  *
  * \return  Expression info tuple containing the opcode and operand(s).
  */
 IntermediateCode::ExpressionInfo
 IntermediateCode::GetExpressionInfo(
     AstNode::Ptr expressionNode,
-    SymbolTable::Ptr currentSt,
-    Instructions& preInstructions
+    Instructions& preInstructions,
+    SymbolTable::Ptr currentSt
 )
 {
     Opcode opcode{ Opcode::UNUSED };
@@ -264,13 +264,13 @@ IntermediateCode::GetExpressionInfo(
     {
         // First resolve the operands themselves, as they may need prerequisite instructions
         AstNode::Children children = expressionNode->GetChildren();
-        ExpressionInfo lhsInfo = GetExpressionInfo( children[0], currentSt, preInstructions );
+        ExpressionInfo lhsInfo = GetExpressionInfo( children[0], preInstructions, currentSt );
         Operand lhs = GetOperandFromExpressionInfo( lhsInfo, preInstructions );
 
         Operand rhs;
         if ( 2u == children.size() )
         {
-            ExpressionInfo rhsInfo = GetExpressionInfo( children[1], currentSt, preInstructions );
+            ExpressionInfo rhsInfo = GetExpressionInfo( children[1], preInstructions, currentSt );
             Operand rhs = GetOperandFromExpressionInfo( rhsInfo, preInstructions );
         }
 
@@ -383,13 +383,66 @@ IntermediateCode::GetOperandFromExpressionInfo(
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
  * \param[out]  instructions  The container of instructions to append to.
+ * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertIfElse(
     AstNode::Ptr astNode,
-    Instructions& instructions
+    Instructions& instructions,
+    SymbolTable::Ptr currentSt
 )
 {
+    if ( T::IF != astNode->m_nodeLabel )
+    {
+        LOG_ERROR_AND_THROW( "AST node has wrong label. Expected IF, got: "
+                             + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ), std::invalid_argument );
+    }
+
+    AstNode::Children children = astNode->GetChildren();
+    // If there are 2 children, this means there is a condition and a block
+    // If there are 3 children, there is an addition else, which contains a block
+    if ( 2u > children.size() || 3u < children.size() )
+    {
+        LOG_ERROR_AND_THROW( "Trying to convert if/else statement: expected 2 or 3 children, got: "
+                             + std::to_string( children.size() ), std::invalid_argument );
+    }
+
+    SymbolTable::Ptr ifSymbolTable = astNode->m_symbolTable;
+    if ( !astNode->IsScopeDefiningNode() || nullptr == ifSymbolTable )
+    {
+        LOG_ERROR_AND_THROW( "'If' AST node has no symbol table.", std::invalid_argument );
+    }
+
+    // Get the condition
+    AstNode::Ptr conditionNode = children[0];
+    ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, instructions, ifSymbolTable );
+    Operand conditionOperand = GetOperandFromExpressionInfo( conditionExpressionInfo, instructions );
+
+    std::string elseLabel = m_tacGenerator->GetNewLabel( "skipIf" );
+
+    // Branch if NOT condition (i.e. if condition == 0)
+    ThreeAddrInstruction::Ptr branchInstr
+        = std::make_shared< ThreeAddrInstruction>( elseLabel, Opcode::BRZ, conditionOperand, std::monostate{} );
+    instructions.push_back( branchInstr );
+
+    // Add the if block instructions
+    AstNode::Ptr ifBlockNode = children[1];
+    ConvertAstToInstructions( ifBlockNode, instructions, ifSymbolTable );
+
+    // If there is an else, add that block and attach the else label
+    if ( 3u == children.size() )
+    {
+        AstNode::Ptr elseNode = children[2];
+        if ( T::ELSE != elseNode->m_nodeLabel )
+        {
+            LOG_ERROR_AND_THROW( "AST node has wrong label. Expected ELSE, got: "
+                                 + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ),
+                                 std::invalid_argument );
+        }
+
+
+    }
+
     // TODO: implement
     LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
 }
@@ -399,11 +452,13 @@ IntermediateCode::ConvertIfElse(
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
  * \param[out]  instructions  The container of instructions to append to.
+ * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertForLoop(
     AstNode::Ptr astNode,
-    Instructions& instructions
+    Instructions& instructions,
+    SymbolTable::Ptr currentSt
 )
 {
     // TODO: implement
@@ -415,11 +470,13 @@ IntermediateCode::ConvertForLoop(
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
  * \param[out]  instructions  The container of instructions to append to.
+ * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertWhileLoop(
     AstNode::Ptr astNode,
-    Instructions& instructions
+    Instructions& instructions,
+    SymbolTable::Ptr currentSt
 )
 {
     // TODO: implement
