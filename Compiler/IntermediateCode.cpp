@@ -5,9 +5,11 @@
 #include "IntermediateCode.h"
 
 IntermediateCode::IntermediateCode(
+    TacInstructionFactory::Ptr instrFactory,
     TacGenerator::Ptr tacGenerator
 )
-: m_tacGenerator( tacGenerator )
+: m_instructionFactory( instrFactory ),
+  m_tacGenerator( tacGenerator )
 {
 }
 
@@ -371,7 +373,7 @@ IntermediateCode::GetOperandFromExpressionInfo(
 
     // If opcode is being used, we need to create an assignment instruction for a temporary variable, which will then
     // become the returned operand.
-    std::string tempVarId = m_tacGenerator->GetNewTempVar();
+    std::string tempVarId = m_instructionFactory->GetNewTempVar();
     ThreeAddrInstruction::Ptr instruction
         = std::make_shared< ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
     instructions.push_back( instruction );
@@ -418,7 +420,7 @@ IntermediateCode::ConvertIfElse(
     ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, instructions, ifSymbolTable );
     Operand conditionOperand = GetOperandFromExpressionInfo( conditionExpressionInfo, instructions );
 
-    std::string elseLabel = m_tacGenerator->GetNewLabel( "skipIf" );
+    std::string elseLabel = m_instructionFactory->GetNewLabel( "skipIf" );
 
     // Branch if NOT condition (i.e. if condition == 0)
     ThreeAddrInstruction::Ptr branchInstr
@@ -428,6 +430,9 @@ IntermediateCode::ConvertIfElse(
     // Add the if block instructions
     AstNode::Ptr ifBlockNode = children[1];
     ConvertAstToInstructions( ifBlockNode, instructions, ifSymbolTable );
+
+    // TODO: work out how to configure it so that the next instr added to instructions will have a certain label
+    // - regardless of if a label is requested for that instr or not.
 
     // If there is an else, add that block and attach the else label
     if ( 3u == children.size() )

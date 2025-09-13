@@ -4,71 +4,9 @@
 
 #include "TacGenerator.h"
 
-TacGenerator::TacGenerator()
-    : m_tempVarsInUse( 0u ),
-    m_labelsInUse( 0u ),
-    m_nextLabel( "" )
+TacGenerator::TacGenerator( TacInstructionFactory::Ptr instrFactory )
+: m_instructionFactory( instrFactory )
 {
-}
-
-/**
- * \brief  Gets identifier representing the next temporary variable available to use. Uses a counter to keep track
- *         of how many are currently in use.
- *
- * \param[in]  hrfName  Optional identifier name to use in combination with the counter, to allow easier debugging.
- *
- * \return  String identifier of the next available temporary variable.
- */
-std::string
-TacGenerator::GetNewTempVar(
-    std::string hrfName //= "temp"
-)
-{
-    // Use a naming convention that isn't allowed by the grammar, to avoid naming clashes. This doesn't matter
-    // at this point in compilation as any string is a valid representation.
-    std::string id = std::to_string( m_tempVarsInUse ) + hrfName;
-    ++m_tempVarsInUse;
-    return id;
-}
-
-/**
- * \brief  Gets a new unique branch label. Uses a counter to keep track of the next available number. If the next label
- *         has already been pre-set, this is returned instead.
- *
- * \param[in]  hrfName  Optional label name to use in combination with the counter, to allow easier debugging.
- *
- * \return  Unique label in string form.
- */
-std::string
-TacGenerator::GetNewLabel(
-    std::string hrfName //= "label"
-)
-{
-    if ( "" != m_nextLabel )
-    {
-        std::string label = m_nextLabel;
-        m_nextLabel = "";
-        return label;
-    }
-    else
-    {
-        std::string label = hrfName + std::to_string( m_labelsInUse );
-        ++m_labelsInUse;
-        return label;
-    }
-}
-
-/**
- * \brief  Configures the next label to be returned when a new one is requested.
- *
- * \param[in]  label  The string to be returned upon next label request.
- */
-void
-TacGenerator::SetNextLabel(
-    const std::string& label
-)
-{
-    m_nextLabel = label;
 }
 
 /**
@@ -126,30 +64,30 @@ TacGenerator::Multiply(
 
     // Temp vars declarations
 
-    std::string result = GetNewTempVar( "multResult" );
+    std::string result = m_instructionFactory->GetNewTempVar( "multResult" );
     constexpr uint8_t resultInit{ 0u };
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
 
     // Copy operands into new temp vars because the values are edited.
-    std::string multiplier = GetNewTempVar( "multiplier" );
+    std::string multiplier = m_instructionFactory->GetNewTempVar( "multiplier" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, op1 ) );
-    std::string multiplicand = GetNewTempVar( "multiplicand" );
+    std::string multiplicand = m_instructionFactory->GetNewTempVar( "multiplicand" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, op2 ) );
 
-    std::string bitCounter = GetNewTempVar( "bitCounter" );
+    std::string bitCounter = m_instructionFactory->GetNewTempVar( "bitCounter" );
     constexpr uint8_t bitCtInit{ 8u }; // 8 bits in a byte, which is our current supported literal length.
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( bitCounter, bitCtInit ) );
 
 
     // Main loop
-    std::string mainLoopLabel = GetNewLabel( "multLoop" );
-    std::string lsb = GetNewTempVar( "lsb" ); // Use bitmask to retrieve the LSB, in bit form.
+    std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "multLoop" );
+    std::string lsb = m_instructionFactory->GetNewTempVar( "lsb" ); // Use bitmask to retrieve the LSB, in bit form.
     constexpr uint8_t lsbBitmask{ 0xfe };
     tempIns.push_back(
         std::make_shared< ThreeAddrInstruction >( lsb, Opcode::AND, multiplier, lsbBitmask, mainLoopLabel )
     );
 
-    std::string shiftLabel = GetNewLabel( "shift" );
+    std::string shiftLabel = m_instructionFactory->GetNewLabel( "shift" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( shiftLabel, Opcode::BRZ, lsb, emptyOp ) );
 
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::ADD, result, multiplicand ) );
@@ -289,21 +227,21 @@ TacGenerator::AddDivModInstructions(
 
     // Temp vars declarations
 
-    std::string result = GetNewTempVar( "divResult" );
+    std::string result = m_instructionFactory->GetNewTempVar( "divResult" );
     constexpr uint8_t resultInit{ 0u };
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
 
     // Copy operands into new temp vars because the values are edited.
-    std::string dividend = GetNewTempVar( "dividend" );
+    std::string dividend = m_instructionFactory->GetNewTempVar( "dividend" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, op1 ) );
-    std::string quotient = GetNewTempVar( "quotient" );
+    std::string quotient = m_instructionFactory->GetNewTempVar( "quotient" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( quotient, op2 ) );
 
 
     // Main loop
 
-    std::string mainLoopLabel = GetNewLabel( "divLoop" );
-    std::string endLabel = GetNewLabel( "end" );
+    std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "divLoop" );
+    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
     tempIns.push_back(
         std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, quotient, dividend, mainLoopLabel )
     );
@@ -315,8 +253,9 @@ TacGenerator::AddDivModInstructions(
 
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( mainLoopLabel, Opcode::BRU, emptyOp, emptyOp ) );
 
-
-    SetNextLabel( endLabel );
+    // TODO: fix - this will only set the next requested label, whereas we want this to branch specifically to the next instr
+    // after this current block.
+    m_instructionFactory->SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
 
@@ -647,17 +586,18 @@ TacGenerator::AddComparisonInstructions(
     Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
     tempIns.reserve( numInstructionsToAdd );
 
-    std::string result = GetNewTempVar( resultName );
+    std::string result = m_instructionFactory->GetNewTempVar( resultName );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
 
-    std::string endLabel = GetNewLabel( "end" );
+    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, branchOperand1, branchOperand2 ) );
 
     bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
     const uint8_t skippableValue{ !branchTrueBool };
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, skippableValue ) );
 
-    SetNextLabel( endLabel );
+    // TODO: see above issue
+    m_instructionFactory->SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
 
@@ -786,17 +726,17 @@ TacGenerator::LogicalOr(
     tempIns.reserve( numInstructionsToAdd );
 
     const std::string resultName = "isGt";
-    std::string result = GetNewTempVar( resultName );
+    std::string result = m_instructionFactory->GetNewTempVar( resultName );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
 
     const Operand zeroOp{ 0u };
-    std::string endLabel = GetNewLabel( "end" );
+    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
 
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
 
-    SetNextLabel( endLabel );
+    m_instructionFactory->SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
 
@@ -879,17 +819,18 @@ TacGenerator::LogicalAnd(
     tempIns.reserve( numInstructionsToAdd );
 
     const std::string resultName = "isGt";
-    std::string result = GetNewTempVar( resultName );
+    std::string result = m_instructionFactory->GetNewTempVar( resultName );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
 
     const Operand zeroOp{ 0u };
-    std::string endLabel = GetNewLabel( "end" );
+    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
 
     tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
 
-    SetNextLabel( endLabel );
+    // TODO same as above
+    m_instructionFactory->SetNextLabel( endLabel );
 
     instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
 

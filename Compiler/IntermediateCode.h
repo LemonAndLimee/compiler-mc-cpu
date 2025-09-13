@@ -20,7 +20,7 @@ class IntermediateCode
 public:
     using UPtr = std::unique_ptr< IntermediateCode >;
 
-    IntermediateCode( TacGenerator::Ptr tacGenerator );
+    IntermediateCode( TacInstructionFactory::Ptr instrFactory, TacGenerator::Ptr tacGenerator );
 
     Instructions GenerateIntermediateCode( AstNode::Ptr astNode );
 
@@ -42,6 +42,8 @@ private:
                                       SymbolTable::Ptr currentSt );
     Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
 
+    // Factory class for creating instructions.
+    TacInstructionFactory::Ptr m_instructionFactory;
     // Object responsible for converting complex operations and creating new instructions.
     TacGenerator::Ptr m_tacGenerator;
 };
