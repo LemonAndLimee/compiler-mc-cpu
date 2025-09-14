@@ -156,3 +156,22 @@ TacInstructionFactory::AddAssignmentInstruction(
     Operand emptyOperand{};
     AddInstruction( target, emptyOpcode, operand, emptyOperand );
 }
+
+/**
+ * \brief  Returns the stored collection of instructions. If there is still a label waiting to be added, create
+ *         a dummy filler instruction to hold the label.
+ *
+ * \return  The stored instructions.
+ */
+TacInstructionFactory::Instructions
+TacInstructionFactory::GetInstructions()
+{
+    // If the 'next instruction label' is set, add a filler instruction with this label so that previous instructions
+    // have this label to branch to.
+    if ( "" != m_nextInstrLabel )
+    {
+        std::string tempVar = GetNewTempVar();
+        AddAssignmentInstruction( tempVar, 0u );
+    }
+    return m_instructions;
+}

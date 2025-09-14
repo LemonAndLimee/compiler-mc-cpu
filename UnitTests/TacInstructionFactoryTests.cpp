@@ -192,4 +192,55 @@ BOOST_AUTO_TEST_CASE( AddAssignmentInstruction )
 
 BOOST_AUTO_TEST_SUITE_END() // AddInstructionTests
 
+/**
+ * Tests that the method for getting instructions successfully returns the stored instructions container.
+ */
+BOOST_AUTO_TEST_CASE( GetInstructions )
+{
+    // Populate with some instructions
+    const std::string target{ "target" };
+    const Operand operand{ "op1" };
+    m_instructionFactory->AddAssignmentInstruction( target, operand );
+    m_instructionFactory->AddAssignmentInstruction( target, operand );
+    const std::string target2{ "target2" };
+    const Operand operand2{ "op2" };
+    m_instructionFactory->AddAssignmentInstruction( target2, operand2 );
+
+    TacInstructionFactory::Instructions instructions = m_instructionFactory->GetInstructions();
+    BOOST_CHECK_EQUAL_COLLECTIONS( instructions.begin(),
+                                   instructions.end(),
+                                   m_instructionFactory->m_instructions.begin(),
+                                   m_instructionFactory->m_instructions.end() );
+}
+
+/**
+ * Tests that the method for getting instructions will add a filler instruction on the end if there is still a label
+ * due, before returning.
+ */
+BOOST_AUTO_TEST_CASE( GetInstructions_AddsInstrOnEnd )
+{
+    const std::string target{ "target" };
+    const Operand operand{ "op1" };
+    m_instructionFactory->AddAssignmentInstruction( target, operand );
+
+    const std::string label{ "label" };
+    m_instructionFactory->SetNextInstructionLabel( label );
+
+    BOOST_CHECK_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
+    TacInstructionFactory::Instructions instructions = m_instructionFactory->GetInstructions();
+    BOOST_CHECK_EQUAL( 2u, m_instructionFactory->m_instructions.size() );
+
+    BOOST_CHECK_EQUAL_COLLECTIONS( instructions.begin(),
+                                   instructions.end(),
+                                   m_instructionFactory->m_instructions.begin(),
+                                   m_instructionFactory->m_instructions.end() );
+
+    ThreeAddrInstruction::Ptr fillerInstr = instructions[1];
+    // Expect assignment to 0, with the correct label.
+    BOOST_CHECK_EQUAL( label, fillerInstr->m_label );
+    BOOST_CHECK_EQUAL( Opcode::UNUSED, fillerInstr->m_opcode );
+    const Operand expectedOp{ 0u };
+    BOOST_CHECK( expectedOp == fillerInstr->m_operand1 );
+}
+
 BOOST_AUTO_TEST_SUITE_END() // TacInstructionFactoryTests

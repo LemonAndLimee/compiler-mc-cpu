@@ -21,15 +21,14 @@ public:
     virtual std::string GetNewLabel( std::string hrfName = "label" );
 
     virtual std::string GetNextInstructionLabel();
-    // TODO: when all the instructions have finished generating, if there is still a next instruction label,
-    // we should add a dummy instruction with this label, so previous instructions can branch to the end properly.
-    // Probably in a new method for fetching the generated instructions, when the time comes.
     virtual void SetNextInstructionLabel( const std::string& label );
 
     virtual void AddInstruction( std::string target, Opcode opcode, Operand operand1, Operand operand2 );
     virtual void AddSingleOperandInstruction( std::string target, Opcode opcode, Operand operand );
     virtual void AddNoOperandsInstruction( std::string target, Opcode opcode );
     virtual void AddAssignmentInstruction( std::string target, Operand operand );
+
+    virtual Instructions GetInstructions();
 
 protected:
     // Storage of created instructions.
