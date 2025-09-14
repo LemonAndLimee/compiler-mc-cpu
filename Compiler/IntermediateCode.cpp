@@ -411,8 +411,9 @@ IntermediateCode::ConvertIfElse(
     AstNode::Ptr ifBlockNode = children[1];
     ConvertAstToInstructions( ifBlockNode, ifSymbolTable );
 
-    // TODO: work out how to configure it so that the next instr added to instructions will have a certain label
-    // - regardless of if a label is requested for that instr or not.
+    // Set the else label to be the next instruction - this will either point to the soon-to-be-added else block, or
+    // the next instruction that gets added.
+    m_instructionFactory->SetNextInstructionLabel( elseLabel );
 
     // If there is an else, add that block and attach the else label
     if ( 3u == children.size() )
@@ -425,11 +426,12 @@ IntermediateCode::ConvertIfElse(
                                  std::invalid_argument );
         }
 
-
+        AstNode::Children elseChildren = elseNode->GetChildren();
+        for ( auto child : elseChildren )
+        {
+            ConvertAstToInstructions( child, ifSymbolTable );
+        }
     }
-
-    // TODO: implement
-    LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
 }
 
 /**
