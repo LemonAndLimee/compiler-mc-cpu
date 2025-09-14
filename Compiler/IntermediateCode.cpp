@@ -125,6 +125,11 @@ IntermediateCode::ConvertAssign(
     SymbolTable::Ptr currentSt
 )
 {
+    if ( T::ASSIGN != astNode->m_nodeLabel )
+    {
+        LOG_ERROR_AND_THROW( "AST node has wrong label. Expected ASSIGN, got: "
+                             + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ), std::invalid_argument );
+    }
     AstNode::Children children = astNode->GetChildren();
     // Expect there to be 2 children, a LHS and RHS
     if ( 2u != children.size() )
@@ -446,8 +451,67 @@ IntermediateCode::ConvertForLoop(
     SymbolTable::Ptr currentSt
 )
 {
-    // TODO: implement
-    LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
+    if ( T::FOR != astNode->m_nodeLabel )
+    {
+        LOG_ERROR_AND_THROW( "AST node has wrong label. Expected FOR, got: "
+                             + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ), std::invalid_argument );
+    }
+
+    // Expect for loop node to have 2 children: the initialising section, and the actual block.
+    AstNode::Children children = astNode->GetChildren();
+    if ( 2u != children.size() )
+    {
+        LOG_ERROR_AND_THROW( "Trying to convert for loop: expected 2 children, got: "
+                             + std::to_string( children.size() ), std::invalid_argument );
+    }
+
+    AstNode::Ptr initNode = children[0];
+    AstNode::Ptr blockNode = children[1];
+    // The for init section should have 3 children: a statement (1), a comparison, and another statement (2).
+    AstNode::Children initChildren = initNode->GetChildren();
+    if ( 3u != initChildren.size() )
+    {
+        LOG_ERROR_AND_THROW( "Trying to convert for loop initialisation section: expected 3 children, got: "
+                             + std::to_string( initChildren.size() ), std::invalid_argument );
+    }
+    AstNode::Ptr statement1 = initChildren[0];
+    AstNode::Ptr comparison = initChildren[1];
+    AstNode::Ptr statement2 = initChildren[2];
+
+    SymbolTable::Ptr forSymbolTable = astNode->m_symbolTable;
+    if ( !astNode->IsScopeDefiningNode() || nullptr == forSymbolTable )
+    {
+        LOG_ERROR_AND_THROW( "'For' AST node has no symbol table.", std::invalid_argument );
+    }
+
+    // The TAC code should look like this:
+    // Execute statement 1.
+    // Jump to 'loop label'
+    // start label: Execute block.
+    // Execute statement 2.
+    // loop label: If comparison true, jump to start label
+
+    // Use this format to avoid 2 branches when repeating the loop
+
+    ConvertAssign( statement1, forSymbolTable );
+
+    std::string conditionLabel = m_instructionFactory->GetNewLabel( "forCondition" );
+    m_instructionFactory->AddNoOperandsInstruction( conditionLabel, Opcode::BRU );
+
+    std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startForLoop" );
+    m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
+
+    ConvertAstToInstructions( blockNode, forSymbolTable );
+    ConvertAssign( statement2, forSymbolTable );
+
+    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+
+    ExpressionInfo comparisonInfo = GetExpressionInfo( comparison, forSymbolTable );
+    Operand comparisonOperand = GetOperandFromExpressionInfo( comparisonInfo );
+    // If comparison > 0 aka comparison is true, branch to start.
+    constexpr uint8_t comparisonValue{ 0u };
+    m_instructionFactory->AddInstruction( startLoopLabel, Opcode::BRGT, comparisonOperand, comparisonValue );
+
 }
 
 /**
@@ -462,6 +526,48 @@ IntermediateCode::ConvertWhileLoop(
     SymbolTable::Ptr currentSt
 )
 {
-    // TODO: implement
-    LOG_ERROR_AND_THROW( "Not implemented yet!", std::runtime_error );
+    if ( T::WHILE != astNode->m_nodeLabel )
+    {
+        LOG_ERROR_AND_THROW( "AST node has wrong label. Expected WHILE, got: "
+                             + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ), std::invalid_argument );
+    }
+
+    // Expect to hold 2 children: an expression, and a block.
+    AstNode::Children children = astNode->GetChildren();
+    if ( 2u != children.size() )
+    {
+        LOG_ERROR_AND_THROW( "Trying to convert while loop: expected 2 children, got: "
+                             + std::to_string( children.size() ), std::invalid_argument );
+    }
+    AstNode::Ptr expressionNode = children[0];
+    AstNode::Ptr blockNode = children[1];
+
+    SymbolTable::Ptr whileSymbolTable = astNode->m_symbolTable;
+    if ( !astNode->IsScopeDefiningNode() || nullptr == whileSymbolTable )
+    {
+        LOG_ERROR_AND_THROW( "'While' AST node has no symbol table.", std::invalid_argument );
+    }
+
+    // The TAC code should look like this:
+    // branch to while label
+    // start label: execute block
+    // while label: if expression is true, branch to start label
+
+    // Use this format to avoid 2 branches when repeating the loop
+
+    std::string conditionLabel = m_instructionFactory->GetNewLabel( "whileCondition" );
+    m_instructionFactory->AddNoOperandsInstruction( conditionLabel, Opcode::BRU );
+
+    std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startWhileLoop" );
+    m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
+
+    ConvertAstToInstructions( blockNode, whileSymbolTable );
+
+    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+
+    ExpressionInfo expressionInfo = GetExpressionInfo( expressionNode, whileSymbolTable );
+    Operand expressionOperand = GetOperandFromExpressionInfo( expressionInfo );
+    // If expression > 0 aka expression is true, branch to start.
+    constexpr uint8_t comparisonValue{ 0u };
+    m_instructionFactory->AddInstruction( startLoopLabel, Opcode::BRGT, expressionOperand, comparisonValue );
 }

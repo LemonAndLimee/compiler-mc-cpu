@@ -194,7 +194,7 @@ namespace GrammarRules
         {
             For_init,
             {
-                { T::PAREN_OPEN, Statement, T::SEMICOLON, Comparison, T::SEMICOLON, Statement, T::PAREN_CLOSE }
+                { T::PAREN_OPEN, Statement, T::SEMICOLON, Logical, T::SEMICOLON, Statement, T::PAREN_CLOSE }
             }
         },
         {
