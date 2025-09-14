@@ -14,19 +14,15 @@ IntermediateCode::IntermediateCode(
 }
 
  /**
-  * \brief  Converts the given AST to three-address-code instructions.
+  * \brief  Converts the given AST to three-address-code instructions, stored in the factory class.
   *
   * \param[in]  astNode  The root node of the AST being converted to TAC.
-  *
-  * \return  Vector of TAC instructions.
   */
-Instructions
+void
 IntermediateCode::GenerateIntermediateCode(
     AstNode::Ptr astNode
 )
 {
-    Instructions instructionsToPopulate{};
-
     if ( nullptr == astNode->m_symbolTable )
     {
         LOG_ERROR_AND_THROW( "Can't generate intermediate code for an AST that doesn't have a symbol table.",
@@ -34,21 +30,18 @@ IntermediateCode::GenerateIntermediateCode(
     }
 
     // Call internal method - this will handle error checking.
-    ConvertAstToInstructions( astNode, instructionsToPopulate, astNode->m_symbolTable );
-    return instructionsToPopulate;
+    ConvertAstToInstructions( astNode, astNode->m_symbolTable );
 }
 
 /**
  * \brief  Converts the given AST sub-tree to three-address-code instructions.
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
- * \param[out]  instructions  The container of instructions to append to.
  * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertAstToInstructions(
     AstNode::Ptr astNode,
-    Instructions& instructions,
     SymbolTable::Ptr currentSt
 )
 {
@@ -76,16 +69,16 @@ IntermediateCode::ConvertAstToInstructions(
         switch ( nodeLabel )
         {
         case T::ASSIGN:
-            ConvertAssign( astNode, instructions, currentSt );
+            ConvertAssign( astNode, currentSt );
             break;
         case T::IF:
-            ConvertIfElse( astNode, instructions, currentSt );
+            ConvertIfElse( astNode, currentSt );
             break;
         case T::FOR:
-            ConvertForLoop( astNode, instructions, currentSt );
+            ConvertForLoop( astNode, currentSt );
             break;
         case T::WHILE:
-            ConvertWhileLoop( astNode, instructions, currentSt );
+            ConvertWhileLoop( astNode, currentSt );
             break;
         default:
             LOG_ERROR_AND_THROW( "Node label not suitable for an instruction: " + nodeLabelString,
@@ -104,7 +97,7 @@ IntermediateCode::ConvertAstToInstructions(
             {
                 // No need to check symbol table here as any new scope should be introduced as part of a specific
                 // operation, as described above - and should therefore be handled there.
-                ConvertAstToInstructions( child, instructions, currentSt );
+                ConvertAstToInstructions( child, currentSt );
             }
         }
         else
@@ -124,13 +117,11 @@ IntermediateCode::ConvertAstToInstructions(
  * \brief  Converts an AST representing an assignment statement to TAC instruction(s).
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
- * \param[out]  instructions  The container of instructions to append to.
  * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertAssign(
     AstNode::Ptr astNode,
-    Instructions& instructions,
     SymbolTable::Ptr currentSt
 )
 {
@@ -150,8 +141,7 @@ IntermediateCode::ConvertAssign(
 
     // RHS should either be a literal, an ID, or an expression (which may need breaking down further).
     AstNode::Ptr rhsNode = children[1];
-    Instructions prerequisiteInstructions{};
-    ExpressionInfo expressionInfo = GetExpressionInfo( rhsNode, prerequisiteInstructions, currentSt );
+    ExpressionInfo expressionInfo = GetExpressionInfo( rhsNode, currentSt );
 
 
     // Create assignment statement from the expression info, targeting the LHS identifier.
@@ -159,7 +149,7 @@ IntermediateCode::ConvertAssign(
     Operand operand1 = std::get< 1 >( expressionInfo );
     Operand operand2 = std::get< 2 >( expressionInfo );
 
-    instructions.push_back( std::make_shared< ThreeAddrInstruction >( uniqueLhsId, opcode, operand1, operand2 ) );
+    m_instructionFactory->AddInstruction( uniqueLhsId, opcode, operand1, operand2 );
 }
 
 /**
@@ -232,16 +222,14 @@ IntermediateCode::CalculateUniqueIdentifier(
  *         contains sub-expressions, it generates instructions for temporary variables first (which will then be
  *         used for the operand(s)).
  *
- * \param[in]   expressionNode   The AST node representing the expression being converted.
- * \param[out]  preInstructions  Container in which any prerequisite instructions for temporary variables are stored.
- * \param[in]   currentSt        The current symbol table of this scope.
+ * \param[in]   expressionNode  The AST node representing the expression being converted.
+ * \param[in]   currentSt       The current symbol table of this scope.
  *
  * \return  Expression info tuple containing the opcode and operand(s).
  */
 IntermediateCode::ExpressionInfo
 IntermediateCode::GetExpressionInfo(
     AstNode::Ptr expressionNode,
-    Instructions& preInstructions,
     SymbolTable::Ptr currentSt
 )
 {
@@ -266,14 +254,14 @@ IntermediateCode::GetExpressionInfo(
     {
         // First resolve the operands themselves, as they may need prerequisite instructions
         AstNode::Children children = expressionNode->GetChildren();
-        ExpressionInfo lhsInfo = GetExpressionInfo( children[0], preInstructions, currentSt );
-        Operand lhs = GetOperandFromExpressionInfo( lhsInfo, preInstructions );
+        ExpressionInfo lhsInfo = GetExpressionInfo( children[0], currentSt );
+        Operand lhs = GetOperandFromExpressionInfo( lhsInfo );
 
         Operand rhs;
         if ( 2u == children.size() )
         {
-            ExpressionInfo rhsInfo = GetExpressionInfo( children[1], preInstructions, currentSt );
-            Operand rhs = GetOperandFromExpressionInfo( rhsInfo, preInstructions );
+            ExpressionInfo rhsInfo = GetExpressionInfo( children[1], currentSt );
+            Operand rhs = GetOperandFromExpressionInfo( rhsInfo );
         }
 
         // For opcodes that directly map e.g. ADD, this is more simple
@@ -291,31 +279,31 @@ IntermediateCode::GetExpressionInfo(
             switch ( nodeLabel )
             {
             case T::MULTIPLY:
-                operand1 = m_tacGenerator->Multiply( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Multiply( lhs, rhs );
                 break;
             case T::DIVIDE:
-                operand1 = m_tacGenerator->Divide( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Divide( lhs, rhs );
                 break;
             case T::MOD:
-                operand1 = m_tacGenerator->Modulo( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Modulo( lhs, rhs );
                 break;
             case T::EQ:
-                operand1 = m_tacGenerator->Equals( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Equals( lhs, rhs );
                 break;
             case T::NEQ:
-                operand1 = m_tacGenerator->NotEquals( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->NotEquals( lhs, rhs );
                 break;
             case T::LEQ:
-                operand1 = m_tacGenerator->Leq( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Leq( lhs, rhs );
                 break;
             case T::GEQ:
-                operand1 = m_tacGenerator->Geq( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->Geq( lhs, rhs );
                 break;
             case T::LT:
-                operand1 = m_tacGenerator->LessThan( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->LessThan( lhs, rhs );
                 break;
             case T::GT:
-                operand1 = m_tacGenerator->GreaterThan( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->GreaterThan( lhs, rhs );
                 break;
             case T::NOT: // Logical NOT
                 if ( !std::holds_alternative< std::monostate >( rhs ) )
@@ -323,13 +311,13 @@ IntermediateCode::GetExpressionInfo(
                     LOG_ERROR_AND_THROW( "Cannot generate intermediate code for NOT operation with 2 operands.",
                                          std::invalid_argument );
                 }
-                operand1 = m_tacGenerator->LogicalNot( lhs, preInstructions );
+                operand1 = m_tacGenerator->LogicalNot( lhs );
                 break;
             case T::OR:  // Logical OR
-                operand1 = m_tacGenerator->LogicalOr( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->LogicalOr( lhs, rhs );
                 break;
             case T::AND: // Logical AND
-                operand1 = m_tacGenerator->LogicalAnd( lhs, rhs, preInstructions );
+                operand1 = m_tacGenerator->LogicalAnd( lhs, rhs );
                 break;
             default:
                 LOG_ERROR_AND_THROW( "Invalid or unrecognised node label for expression: "
@@ -346,15 +334,13 @@ IntermediateCode::GetExpressionInfo(
  * \brief  Takes information gathered about an expression and returns an operand value (either the direct single value,
  *         or a temporary variable through creating an assignment statement.
  *
- * \param[in]   info          Information about the expression (if exists, the opcode and operand(s)).
- * \param[out]  instructions  Container in which any generated instructions for temporary variables are stored.
+ * \param[in]  info  Information about the expression (if exists, the opcode and operand(s)).
  *
  * \return  Expression info tuple containing the opcode and operand(s).
  */
 Operand
 IntermediateCode::GetOperandFromExpressionInfo(
-    ExpressionInfo info,
-    Instructions& instructions
+    ExpressionInfo info
 )
 {
     Opcode opcode = std::get< Opcode >( info );
@@ -371,12 +357,10 @@ IntermediateCode::GetOperandFromExpressionInfo(
         return operand1;
     }
 
-    // If opcode is being used, we need to create an assignment instruction for a temporary variable, which will then
+    // If opcode is being used, we need to create an instruction to be stored in a temporary variable, which will then
     // become the returned operand.
     std::string tempVarId = m_instructionFactory->GetNewTempVar();
-    ThreeAddrInstruction::Ptr instruction
-        = std::make_shared< ThreeAddrInstruction >( tempVarId, opcode, operand1, operand2 );
-    instructions.push_back( instruction );
+    m_instructionFactory->AddInstruction( tempVarId, opcode, operand1, operand2 );
     return tempVarId;
 }
 
@@ -384,13 +368,11 @@ IntermediateCode::GetOperandFromExpressionInfo(
  * \brief  Converts an AST representing an if/else statement to TAC instruction(s).
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
- * \param[out]  instructions  The container of instructions to append to.
  * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertIfElse(
     AstNode::Ptr astNode,
-    Instructions& instructions,
     SymbolTable::Ptr currentSt
 )
 {
@@ -417,19 +399,17 @@ IntermediateCode::ConvertIfElse(
 
     // Get the condition
     AstNode::Ptr conditionNode = children[0];
-    ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, instructions, ifSymbolTable );
-    Operand conditionOperand = GetOperandFromExpressionInfo( conditionExpressionInfo, instructions );
+    ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, ifSymbolTable );
+    Operand conditionOperand = GetOperandFromExpressionInfo( conditionExpressionInfo );
 
     std::string elseLabel = m_instructionFactory->GetNewLabel( "skipIf" );
 
     // Branch if NOT condition (i.e. if condition == 0)
-    ThreeAddrInstruction::Ptr branchInstr
-        = std::make_shared< ThreeAddrInstruction>( elseLabel, Opcode::BRZ, conditionOperand, std::monostate{} );
-    instructions.push_back( branchInstr );
+    m_instructionFactory->AddSingleOperandInstruction( elseLabel, Opcode::BRZ, conditionOperand );
 
     // Add the if block instructions
     AstNode::Ptr ifBlockNode = children[1];
-    ConvertAstToInstructions( ifBlockNode, instructions, ifSymbolTable );
+    ConvertAstToInstructions( ifBlockNode, ifSymbolTable );
 
     // TODO: work out how to configure it so that the next instr added to instructions will have a certain label
     // - regardless of if a label is requested for that instr or not.
@@ -456,13 +436,11 @@ IntermediateCode::ConvertIfElse(
  * \brief  Converts an AST representing a for loop to TAC instruction(s).
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
- * \param[out]  instructions  The container of instructions to append to.
  * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertForLoop(
     AstNode::Ptr astNode,
-    Instructions& instructions,
     SymbolTable::Ptr currentSt
 )
 {
@@ -474,13 +452,11 @@ IntermediateCode::ConvertForLoop(
  * \brief  Converts an AST representing a while loop to TAC instruction(s).
  *
  * \param[in]   astNode       The root node of the AST being converted to TAC.
- * \param[out]  instructions  The container of instructions to append to.
  * \param[in]   currentSt     Current symbol table being used by the parent of this AST node.
  */
 void
 IntermediateCode::ConvertWhileLoop(
     AstNode::Ptr astNode,
-    Instructions& instructions,
     SymbolTable::Ptr currentSt
 )
 {

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ThreeAddrInstruction.h"
+#include "Logger.h"
 
 using namespace TAC;
 
@@ -12,18 +13,29 @@ class TacInstructionFactory
 {
 public:
     using Ptr = std::shared_ptr< TacInstructionFactory >;
+    using Instructions = std::vector< ThreeAddrInstruction::Ptr >;
 
     TacInstructionFactory();
 
-    std::string GetNewTempVar( std::string hrfName = "temp" );
-    std::string GetNewLabel( std::string hrfName = "label" );
-    void SetNextLabel( const std::string& label );
+    virtual std::string GetNewTempVar( std::string hrfName = "temp" );
+    virtual std::string GetNewLabel( std::string hrfName = "label" );
 
-private:
+    virtual std::string GetNextInstructionLabel();
+    virtual void SetNextInstructionLabel( const std::string& label );
+
+    virtual void AddInstruction( std::string target, Opcode opcode, Operand operand1, Operand operand2 );
+    virtual void AddSingleOperandInstruction( std::string target, Opcode opcode, Operand operand );
+    virtual void AddNoOperandsInstruction( std::string target, Opcode opcode );
+    virtual void AddAssignmentInstruction( std::string target, Operand operand );
+
+protected:
+    // Storage of created instructions.
+    Instructions m_instructions;
+
     // Counter of the number of temporary variables currently in use.
     size_t m_tempVarsInUse;
     // Counter of the number of branch labels currently in use.
     size_t m_labelsInUse;
-    // Customisable next label to return.
-    std::string m_nextLabel;
+    // If non-empty, stores the value of the label to be attached to the next created instruction.
+    std::string m_nextInstrLabel;
 };

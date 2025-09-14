@@ -15,15 +15,13 @@ TacGenerator::TacGenerator( TacInstructionFactory::Ptr instrFactory )
  *
  * \param[in]      op1           The first operand to be multiplied.
  * \param[in]      op2           The second operand to be multiplied.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Multiply(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -56,54 +54,46 @@ TacGenerator::Multiply(
      * (return result)
      */
 
-    constexpr size_t numInstructionsToAdd{ 11u };
-    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
-    tempIns.reserve( numInstructionsToAdd );
-
-    Operand emptyOp; // Empty operand to use when an operand is not in use.
-
     // Temp vars declarations
 
     std::string result = m_instructionFactory->GetNewTempVar( "multResult" );
     constexpr uint8_t resultInit{ 0u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
+    m_instructionFactory->AddAssignmentInstruction( result, resultInit );
 
     // Copy operands into new temp vars because the values are edited.
     std::string multiplier = m_instructionFactory->GetNewTempVar( "multiplier" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, op1 ) );
+    m_instructionFactory->AddAssignmentInstruction( multiplier, op1 );
     std::string multiplicand = m_instructionFactory->GetNewTempVar( "multiplicand" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, op2 ) );
+    m_instructionFactory->AddAssignmentInstruction( multiplicand, op2 );
 
     std::string bitCounter = m_instructionFactory->GetNewTempVar( "bitCounter" );
     constexpr uint8_t bitCtInit{ 8u }; // 8 bits in a byte, which is our current supported literal length.
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( bitCounter, bitCtInit ) );
+    m_instructionFactory->AddAssignmentInstruction( bitCounter, bitCtInit );
 
 
     // Main loop
     std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "multLoop" );
+    m_instructionFactory->SetNextInstructionLabel( mainLoopLabel );
     std::string lsb = m_instructionFactory->GetNewTempVar( "lsb" ); // Use bitmask to retrieve the LSB, in bit form.
     constexpr uint8_t lsbBitmask{ 0xfe };
-    tempIns.push_back(
-        std::make_shared< ThreeAddrInstruction >( lsb, Opcode::AND, multiplier, lsbBitmask, mainLoopLabel )
-    );
+    m_instructionFactory->AddInstruction( lsb, Opcode::AND, multiplier, lsbBitmask );
 
     std::string shiftLabel = m_instructionFactory->GetNewLabel( "shift" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( shiftLabel, Opcode::BRZ, lsb, emptyOp ) );
+    m_instructionFactory->AddSingleOperandInstruction( shiftLabel, Opcode::BRZ, lsb );
 
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::ADD, result, multiplicand ) );
+    m_instructionFactory->AddInstruction( result, Opcode::ADD, result, multiplicand );
 
     // The location of the BRZ jump - shift the multiplier and multiplicand to move onto the next LSB
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplicand, Opcode::LS, multiplicand, emptyOp, shiftLabel ) );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( multiplier, Opcode::RS, multiplier, emptyOp ) );
+    m_instructionFactory->SetNextInstructionLabel( shiftLabel );
+    m_instructionFactory->AddSingleOperandInstruction( multiplicand, Opcode::LS, multiplicand );
+    m_instructionFactory->AddSingleOperandInstruction( multiplier, Opcode::RS, multiplier );
 
     constexpr uint8_t decrement{ 1u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( bitCounter, Opcode::SUB, bitCounter, decrement ) );
+    m_instructionFactory->AddInstruction( bitCounter, Opcode::SUB, bitCounter, decrement );
 
     constexpr uint8_t brgtValue{ 0u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( mainLoopLabel, Opcode::BRGT, bitCounter, brgtValue ) );
+    m_instructionFactory->AddInstruction( mainLoopLabel, Opcode::BRGT, bitCounter, brgtValue );
 
-
-    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
     return result;
 }
 
@@ -113,18 +103,16 @@ TacGenerator::Multiply(
  *
  * \param[in]      op1           The first operand (the dividend/numerator).
  * \param[in]      op2           The second operand (the quotient/denominator).
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Divide(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
-    return AddDivModInstructions( op1, op2, instructions, DivMod::DIV );
+    return AddDivModInstructions( op1, op2, DivMod::DIV );
 }
 
 /**
@@ -133,18 +121,16 @@ TacGenerator::Divide(
  *
  * \param[in]      op1           The first operand (the dividend/numerator).
  * \param[in]      op2           The second operand (the quotient/denominator).
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Modulo(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
-    return AddDivModInstructions( op1, op2, instructions, DivMod::MOD );
+    return AddDivModInstructions( op1, op2, DivMod::MOD );
 }
 
 /**
@@ -153,7 +139,6 @@ TacGenerator::Modulo(
  *
  * \param[in]      op1           The first operand (the dividend/numerator).
  * \param[in]      op2           The second operand (the quotient/denominator).
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  * \param[in]      returnType    Whether to return the result from the division or modulo operation.
  *
  * \return  Operand describing the result of the operation.
@@ -162,8 +147,8 @@ Operand
 TacGenerator::AddDivModInstructions(
     Operand op1,
     Operand op2,
-    Instructions& instructions,
-    DivMod returnType )
+    DivMod returnType
+)
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
     {
@@ -219,45 +204,32 @@ TacGenerator::AddDivModInstructions(
      * (div = result, mod = dividend)
      */
 
-    constexpr size_t numInstructionsToAdd{ 7u };
-    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
-    tempIns.reserve( numInstructionsToAdd );
-
-    Operand emptyOp; // Empty operand to use when an operand is not in use.
-
     // Temp vars declarations
 
     std::string result = m_instructionFactory->GetNewTempVar( "divResult" );
     constexpr uint8_t resultInit{ 0u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, resultInit ) );
+    m_instructionFactory->AddAssignmentInstruction( result, resultInit );
 
     // Copy operands into new temp vars because the values are edited.
     std::string dividend = m_instructionFactory->GetNewTempVar( "dividend" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, op1 ) );
+    m_instructionFactory->AddAssignmentInstruction( dividend, op1 );
     std::string quotient = m_instructionFactory->GetNewTempVar( "quotient" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( quotient, op2 ) );
+    m_instructionFactory->AddAssignmentInstruction( quotient, op2 );
 
 
     // Main loop
-
-    std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "divLoop" );
     std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    tempIns.push_back(
-        std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, quotient, dividend, mainLoopLabel )
-    );
+    std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "divLoop" );
+    m_instructionFactory->SetNextInstructionLabel( mainLoopLabel );
+    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, quotient, dividend );
 
     constexpr uint8_t increment{ 1u };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, Opcode::ADD, result, increment ) );
+    m_instructionFactory->AddInstruction( result, Opcode::ADD, result, increment );
+    m_instructionFactory->AddInstruction( dividend, Opcode::SUB, dividend, quotient );
 
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( dividend, Opcode::SUB, dividend, quotient ) );
+    m_instructionFactory->AddNoOperandsInstruction( mainLoopLabel, Opcode::BRU );
 
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( mainLoopLabel, Opcode::BRU, emptyOp, emptyOp ) );
-
-    // TODO: fix - this will only set the next requested label, whereas we want this to branch specifically to the next instr
-    // after this current block.
-    m_instructionFactory->SetNextLabel( endLabel );
-
-    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+    m_instructionFactory->SetNextInstructionLabel( endLabel );
 
     if ( DivMod::DIV == returnType )
     {
@@ -278,15 +250,13 @@ TacGenerator::AddDivModInstructions(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Equals(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -311,8 +281,7 @@ TacGenerator::Equals(
 
     const std::string resultName = "isEq";
     const Literal valueIfBranchTrue{ 1u }; // True if the equals branch succeeds and skips to the end
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRE,
                                       op1,
                                       op2,
@@ -324,15 +293,13 @@ TacGenerator::Equals(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::NotEquals(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -357,8 +324,7 @@ TacGenerator::NotEquals(
 
     const std::string resultName = "isNeq";
     const Literal valueIfBranchTrue{ 0u }; // False if the equals branch succeeds and skips to the end
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRE,
                                       op1,
                                       op2,
@@ -370,15 +336,13 @@ TacGenerator::NotEquals(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Leq(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -403,8 +367,7 @@ TacGenerator::Leq(
 
     const std::string resultName = "isLeq";
     const Literal valueIfBranchTrue{ 0u }; // False if op1 > op2, as this is !(<=)
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRGT,
                                       op1,
                                       op2,
@@ -416,15 +379,13 @@ TacGenerator::Leq(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::Geq(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -449,8 +410,7 @@ TacGenerator::Geq(
 
     const std::string resultName = "isGeq";
     const Literal valueIfBranchTrue{ 0u }; // False if op1 < op2, as this is !(>=)
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRLT,
                                       op1,
                                       op2,
@@ -462,15 +422,13 @@ TacGenerator::Geq(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::LessThan(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -495,8 +453,7 @@ TacGenerator::LessThan(
 
     const std::string resultName = "isLt";
     const Literal valueIfBranchTrue{ 1u }; // True if the less than branch is successful.
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRLT,
                                       op1,
                                       op2,
@@ -508,15 +465,13 @@ TacGenerator::LessThan(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::GreaterThan(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -541,8 +496,7 @@ TacGenerator::GreaterThan(
 
     const std::string resultName = "isGt";
     const Literal valueIfBranchTrue{ 1u }; // True if the greater than branch is successful.
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRGT,
                                       op1,
                                       op2,
@@ -553,8 +507,6 @@ TacGenerator::GreaterThan(
  * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
  *         pattern, this is a shared utility method.
  *
- * \param[in,out]  instructions        Container in which any prerequisite instructions for temporary variables are
- *                                     stored.
  * \param[in]      resultName          Name with which to create the temp var to store the comparison result.
  * \param[in]      branchType          The opcode describing the desired branching operation.
  * \param[in]      branchOperand1      The first operand in the branch instruction.
@@ -565,7 +517,6 @@ TacGenerator::GreaterThan(
  */
 Operand
 TacGenerator::AddComparisonInstructions(
-    Instructions& instructions,
     const std::string& resultName,
     Opcode branchType,
     Operand branchOperand1,
@@ -582,24 +533,17 @@ TacGenerator::AddComparisonInstructions(
      * end:
      */
 
-    constexpr size_t numInstructionsToAdd{ 3u };
-    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
-    tempIns.reserve( numInstructionsToAdd );
-
     std::string result = m_instructionFactory->GetNewTempVar( resultName );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, branchType, branchOperand1, branchOperand2 ) );
+    m_instructionFactory->AddInstruction( endLabel, branchType, branchOperand1, branchOperand2 );
 
     bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
     const uint8_t skippableValue{ !branchTrueBool };
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, skippableValue ) );
+    m_instructionFactory->AddAssignmentInstruction( result, skippableValue );
 
-    // TODO: see above issue
-    m_instructionFactory->SetNextLabel( endLabel );
-
-    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+    m_instructionFactory->SetNextInstructionLabel( endLabel );
 
     return result;
 }
@@ -608,14 +552,12 @@ TacGenerator::AddComparisonInstructions(
  * \brief  Generates the instructions needed for a bool representing the ! operation.
  *
  * \param[in]      op1           The operand being logically inverted.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::LogicalNot(
-    Operand op1,
-    Instructions& instructions
+    Operand op1
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) )
@@ -641,8 +583,7 @@ TacGenerator::LogicalNot(
     const std::string resultName = "not";
     const Literal valueIfBranchTrue{ 1u }; // True if the operand is >0, therefore !op = 1, as the branch succeeded.
     const Operand zeroOp{ 0u };
-    return AddComparisonInstructions( instructions,
-                                      resultName,
+    return AddComparisonInstructions( resultName,
                                       Opcode::BRGT,
                                       op1,
                                       zeroOp,
@@ -654,15 +595,13 @@ TacGenerator::LogicalNot(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::LogicalOr(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -721,24 +660,18 @@ TacGenerator::LogicalOr(
     const Literal valueIfBranchTrue{ 1u }; // True if either greater than branch is successful.
     const Literal valueIfBranchFalse{ 0u };
 
-    constexpr size_t numInstructionsToAdd{ 4u };
-    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
-    tempIns.reserve( numInstructionsToAdd );
-
     const std::string resultName = "isGt";
     std::string result = m_instructionFactory->GetNewTempVar( resultName );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
     std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
+    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op1, zeroOp );
+    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op2, zeroOp );
 
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    m_instructionFactory->SetNextLabel( endLabel );
-
-    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+    m_instructionFactory->SetNextInstructionLabel( endLabel );
 
     return result;
 }
@@ -748,15 +681,13 @@ TacGenerator::LogicalOr(
  *
  * \param[in]      op1           The first operand.
  * \param[in]      op2           The second operand.
- * \param[in,out]  instructions  Container in which any prerequisite instructions for temporary variables are stored.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
 TacGenerator::LogicalAnd(
     Operand op1,
-    Operand op2,
-    Instructions& instructions
+    Operand op2
 )
 {
     if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
@@ -814,25 +745,18 @@ TacGenerator::LogicalAnd(
     const Literal valueIfBranchTrue{ 0u }; // True if either greater than branch is successful.
     const Literal valueIfBranchFalse{ 1u };
 
-    constexpr size_t numInstructionsToAdd{ 4u };
-    Instructions tempIns{}; // Working copy of instructions - copied into the real one after successful pass.
-    tempIns.reserve( numInstructionsToAdd );
-
     const std::string resultName = "isGt";
     std::string result = m_instructionFactory->GetNewTempVar( resultName );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchTrue ) );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
     std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op1, zeroOp ) );
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( endLabel, Opcode::BRGT, op2, zeroOp ) );
+    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op1, zeroOp );
+    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op2, zeroOp );
 
-    tempIns.push_back( std::make_shared< ThreeAddrInstruction >( result, valueIfBranchFalse ) );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    // TODO same as above
-    m_instructionFactory->SetNextLabel( endLabel );
-
-    instructions.insert( instructions.end(), tempIns.begin(), tempIns.end() );
+    m_instructionFactory->SetNextInstructionLabel( endLabel );
 
     return result;
 }

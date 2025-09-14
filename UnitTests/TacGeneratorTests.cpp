@@ -1,14 +1,15 @@
 #include <boost/test/unit_test.hpp>
 
 #include "TacGenerator.h"
+#include "TacInstructionFactoryMock.h"
 
 class TacGeneratorTestsFixture
 {
 public:
     TacGeneratorTestsFixture()
-    : m_generator( std::make_shared< TacGenerator >( std::make_shared< TacInstructionFactory >() ) ),
-      m_currInstrIndex( 0 )
+    : m_instructionFactoryMock( std::make_shared< TacInstructionFactoryMock >() )
     {
+        m_generator = std::make_shared< TacGenerator >( m_instructionFactoryMock );
     }
 
     enum ExpectLabel
@@ -22,145 +23,146 @@ public:
         RES_TRUE
     };
 
-    /**
-     * \brief  Checks the current instruction against the expected values.
-     *
-     * \param[in]  expectedOpcode    The expected opcode value to check.
-     * \param[in]  expectedOperand1  First expected operand value to check.
-     * \param[in]  expectedOperand2  Second expected operand value to check.
-     * \param[in]  expectLabel       Whether to expect a label value (the value itself is not checked).
-     * \param[in]  expectResult      Whether to expect a result string (the value itself is not checked).
-     */
+    // Wrapper around the mock expect call for AddInstruction()
     void
-    CheckInstrAttributes(
-        Opcode expectedOpcode,
-        Operand expectedOperand1,
-        Operand expectedOperand2,
-        ExpectLabel expectLabel,
-        ExpectResult expectResult
+    ExpectAddInstruction(
+        const std::string& expectedTarget,
+        Opcode opcode,
+        Operand operand1,
+        Operand operand2,
+        mock::sequence sequence
     )
     {
-        ThreeAddrInstruction::Ptr currentInstruction = m_instructions[m_currInstrIndex];
-
-        BOOST_CHECK_EQUAL( expectedOpcode, currentInstruction->m_operation);
-
-        if ( std::holds_alternative< std::monostate >( expectedOperand1 ) )
-        {
-            BOOST_CHECK( std::holds_alternative< std::monostate >( currentInstruction->m_operand1 ) );
-        }
-        else
-        {
-            BOOST_CHECK( expectedOperand1 == currentInstruction->m_operand1 );
-        }
-
-        if ( std::holds_alternative< std::monostate >( expectedOperand2 ) )
-        {
-            BOOST_CHECK( std::holds_alternative< std::monostate >( currentInstruction->m_operand2 ) );
-        }
-        else
-        {
-            BOOST_CHECK( expectedOperand2 == currentInstruction->m_operand2 );
-        }
-
-        bool labelIsEmpty = currentInstruction->m_label == "";
-        bool labelCheck = ( ExpectLabel::LBL_TRUE == expectLabel ) ? !labelIsEmpty : labelIsEmpty;
-        BOOST_CHECK( labelCheck );
-
-        bool resultIsEmpty = currentInstruction->m_result == "";
-        bool resultCheck = ( ExpectResult::RES_TRUE == expectResult ) ? !resultIsEmpty : resultIsEmpty;
-        BOOST_CHECK( resultCheck );
+        MOCK_EXPECT( m_instructionFactoryMock->AddInstruction )
+            .once()
+            .in( sequence )
+            .with( expectedTarget, opcode, operand1, operand2 );
     }
-
-    /**
-     * \brief  Checks result string is non-empty, and returns it.
-     *
-     * \returns  The string of the id storing the result.
-     */
-    std::string
-    GetResultIdAndCheckValid()
-    {
-        std::string result = m_instructions[m_currInstrIndex]->m_result;
-        BOOST_CHECK_NE( "", result );
-        return result;
-    }
-
-    /**
-     * \brief  Checks label string is non-empty, and returns it.
-     *
-     * \returns  The string of the label associated with the given instruction.
-     */
-    std::string
-    GetLabelAndCheckValid()
-    {
-        std::string label = m_instructions[m_currInstrIndex]->m_label;
-        BOOST_CHECK_NE( "", label );
-        return label;
-    }
-
-    /**
-     * \brief  Checks the given vector of ID/label strings are all unique to each other.
-     *
-     * \param[in]  strings  Vector of strings.
-     */
+    // Wrapper around the mock expect call for AddSingleOperandInstruction()
     void
-    CheckStringsAreUnique(
-        const std::vector< std::string >& strings
+    ExpectAddSingleOperandInstruction(
+        const std::string& expectedTarget,
+        Opcode opcode,
+        Operand operand,
+        mock::sequence sequence
     )
     {
-        std::set< std::string > s( strings.begin(), strings.end() );
-        BOOST_CHECK_EQUAL( s.size(), strings.size() );
+        MOCK_EXPECT( m_instructionFactoryMock->AddSingleOperandInstruction )
+            .once()
+            .in( sequence )
+            .with( expectedTarget, opcode, operand );
+    }
+    // Wrapper around the mock expect call for AddNoOperandsInstruction()
+    void
+    ExpectAddNoOperandsInstruction(
+        const std::string& expectedTarget,
+        Opcode opcode,
+        mock::sequence sequence
+    )
+    {
+        MOCK_EXPECT( m_instructionFactoryMock->AddNoOperandsInstruction )
+            .once()
+            .in( sequence )
+            .with( expectedTarget, opcode );
+    }
+    // Wrapper around the mock expect call for AddAssignmentInstruction()
+    void
+    ExpectAddAssignmentInstruction(
+        const std::string& expectedTarget,
+        Operand operand,
+        mock::sequence sequence
+    )
+    {
+        MOCK_EXPECT( m_instructionFactoryMock->AddAssignmentInstruction )
+            .once()
+            .in( sequence )
+            .with( expectedTarget, operand );
+    }
+
+    /**
+     * \brief  Checks the mock calls for an assignment of a new temp variable
+     *
+     * \param[in]  idToReturn   Variable ID to mock return.
+     * \param[in]  expectedLhs  Expected operand to be calling with.
+     * \param[in]  sequence     Turtle mock sequence the call should be in.
+     */
+    void
+    CheckNewTempVarCalls(
+        const std::string& idToReturn,
+        Operand expectedLhs,
+        mock::sequence sequence
+    )
+    {
+        MOCK_EXPECT( m_instructionFactoryMock->GetNewTempVar )
+            .once()
+            .in( sequence )
+            .returns( idToReturn );
+        MOCK_EXPECT( m_instructionFactoryMock->AddAssignmentInstruction )
+            .once()
+            .in( sequence )
+            .with( idToReturn, expectedLhs );
+    }
+
+    /**
+     * \brief  Checks the mock calls for getting a new label and setting it as the next instruction label.
+     *
+     * \param[in]  labelToReturn  Label to mock return.
+     * \param[in]  sequence       Turtle mock sequence the call should be in.
+     */
+    void
+    CheckGetAndSetLabelCalls(
+        const std::string& labelToReturn,
+        mock::sequence sequence
+    )
+    {
+        MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel )
+            .once()
+            .in( sequence )
+            .returns( labelToReturn );
+        MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel )
+            .once()
+            .in( sequence )
+            .with( labelToReturn );
     }
 
     /**
      * \brief  Checks the instructions generated for a comparison operation. This is a shared set of checks as they
      *         all share the same pattern.
      *
+     * \param[in]  resultIdToReturn   The mock temp var string to return when a result ID is requested.
      * \param[in]  branchOpcode       The opcode of the expected branch instruction.
      * \param[in]  branchOperand1     The first expected branch operand.
      * \param[in]  branchOperand2     The second expected branch operand.
      * \param[in]  valueIfBranchTrue  The literal value to initialise the result with at first. This value is returned
      *                                if the branch condition is true, i.e. the second assignment is skipped.
-     * \param[in]  instrStartIndex    The index of the first instruction generated by the method being tested.
-     * \param[in]  methodReturn       The operand that was returned by the TAC generator method.
      */
     void
-    CheckComparisonInstructions(
+    ExpectComparisonInstructions(
+        const std::string& resultIdToReturn,
         Opcode branchOpcode,
         Operand branchOperand1,
         Operand branchOperand2,
-        Literal valueIfBranchTrue,
-        size_t instrStartIndex,
-        Operand methodReturn
+        Literal valueIfBranchTrue
     )
     {
-        size_t initialSize{ instrStartIndex };
-        constexpr size_t expectedNumInstructionsAdded{ 3u };
-        BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
+        mock::sequence sequence;
 
-        m_currInstrIndex = 1u;
         uint8_t initialValue{ valueIfBranchTrue };
-        CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-        std::string resultId = GetResultIdAndCheckValid();
+        CheckNewTempVarCalls( resultIdToReturn, initialValue, sequence );
 
-        m_currInstrIndex = 2u;
-        CheckInstrAttributes( branchOpcode, branchOperand1, branchOperand2, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-        std::string endLabel = GetResultIdAndCheckValid();
+        const std::string endLabel{ "endLabel" };
+        MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+        ExpectAddInstruction( endLabel, branchOpcode, branchOperand1, branchOperand2, sequence );
 
-        m_currInstrIndex = 3u;
         uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
-        CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-        BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+        ExpectAddAssignmentInstruction( resultIdToReturn, nonBranchValue, sequence );
 
-
-        // Check that the end label is returned next time a label is requested. TODO: add test for this once functionality is sorted out.
-        //BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
-
-        // Check the returned operand is pointing to the result id string
-        BOOST_CHECK( std::holds_alternative< std::string >( methodReturn ) );
-        BOOST_CHECK_EQUAL( resultId, std::get< std::string >( methodReturn ) );
+        MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
     }
 
 protected:
+
+    TacInstructionFactoryMock::Ptr m_instructionFactoryMock;
 
     // Unit under test
     TacGenerator::Ptr m_generator;
@@ -174,11 +176,6 @@ protected:
     const Operand c_zeroOperand{ 0u };
     const Literal c_trueLiteral{ 1u };
     const Literal c_falseLiteral{ 0u };
-
-    // Instructions vector to be passed to generate methods.
-    Instructions m_instructions;
-    // Index of current instruction being considered by the test - stored here to reduce code clutter.
-    size_t m_currInstrIndex;
 };
 
 BOOST_FIXTURE_TEST_SUITE( TacGeneratorTests, TacGeneratorTestsFixture )
@@ -190,27 +187,24 @@ BOOST_AUTO_TEST_SUITE( MultiplyTests )
  */
 BOOST_AUTO_TEST_CASE( Multiply_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Multiply( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Multiply( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for multiplication will return a numeric value with the operation result
- * if both operands are literals, and does not add any instructions to the given container.
+ * if both operands are literals, and does not add any instructions.
  */
 BOOST_AUTO_TEST_CASE( Multiply_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Multiply( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->Multiply( c_literalOp_Five, c_literalOp_Two );
 
     Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
     Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 * literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
@@ -222,12 +216,6 @@ BOOST_AUTO_TEST_CASE( Multiply_TwoLiterals )
  */
 BOOST_AUTO_TEST_CASE( Multiply_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t initialSize{ m_instructions.size() };
-
-    BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Multiply( c_literalOp_Five, c_stringOp, m_instructions );
-
     /**
      * Expect the following algorithm:
      *
@@ -247,82 +235,62 @@ BOOST_AUTO_TEST_CASE( Multiply_Identifier )
      * (return result)
      */
 
-    constexpr size_t expectedNumInstructionsAdded{ 11u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
 
-    m_currInstrIndex = 0u;
-    BOOST_CHECK_EQUAL( nullptr, m_instructions[m_currInstrIndex] );
+    mock::sequence sequence;
 
     // First four instructions should be initialising the temp vars.
 
-    m_currInstrIndex = 1u;
+    const std::string resultId{ "result" };
     constexpr uint8_t expectedResultInit{ 0u };
-    CheckInstrAttributes( Opcode::UNUSED, expectedResultInit, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( resultId, expectedResultInit, sequence );
 
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string multiplierId = GetResultIdAndCheckValid();
+    const std::string multiplierId{ "multiplier" };
+    CheckNewTempVarCalls( multiplierId, operand1, sequence );
 
-    m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string multiplicandId = GetResultIdAndCheckValid();
+    std::string multiplicandId{ "multiplicand" };
+    CheckNewTempVarCalls( multiplicandId, operand2, sequence );
 
-    m_currInstrIndex = 4u;
+    const std::string bitCounterId{ "bitCounter" };
     constexpr uint8_t expectedBitCounterInit{ 8u };
-    CheckInstrAttributes( Opcode::UNUSED, expectedBitCounterInit, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string bitCounterId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( bitCounterId, expectedBitCounterInit, sequence );
 
     // Main loop:
 
-    m_currInstrIndex = 5u;
+    const std::string mainLoopLabel{ "mainLoopLabel" };
+    CheckGetAndSetLabelCalls( mainLoopLabel, sequence );
+    const std::string andTargetId{ "andTarget" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewTempVar ).once().in( sequence ).returns( andTargetId );
     constexpr uint8_t expectedAndBitmask{ 0xFE }; // Bitmask to get the LSB
-    CheckInstrAttributes( Opcode::AND, multiplierId, expectedAndBitmask, ExpectLabel::LBL_TRUE, ExpectResult::RES_TRUE );
-    std::string andResultId = GetResultIdAndCheckValid();
-    std::string mainLoopLabel = GetLabelAndCheckValid();
+    ExpectAddInstruction( andTargetId, Opcode::AND, multiplierId, expectedAndBitmask, sequence );
 
     // Pre-fetch the label for the shift operation, so we can check its value for the next branch instruction.
-    m_currInstrIndex = 8u;
-    std::string shiftLabel = GetLabelAndCheckValid();
+    const std::string shiftLabel{ "shiftLabel" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( shiftLabel );
 
-    m_currInstrIndex = 6u;
-    CheckInstrAttributes( Opcode::BRZ, andResultId, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( shiftLabel, GetResultIdAndCheckValid() ); // Check is branching to the shift instructions.
+    // Check is branching to the shift instructions.
+    ExpectAddSingleOperandInstruction( shiftLabel, Opcode::BRZ, andTargetId, sequence );
 
-    m_currInstrIndex = 7u;
-    CheckInstrAttributes( Opcode::ADD, resultId, multiplicandId, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() ); // Check is returning the operation into "result".
+    ExpectAddInstruction( resultId, Opcode::ADD, resultId, multiplicandId, sequence );
 
-    m_currInstrIndex = 8u;
     // Do expect a label because this is where it branches past the addition line.
-    CheckInstrAttributes( Opcode::LS, multiplicandId, {}, ExpectLabel::LBL_TRUE, ExpectResult::RES_TRUE );
-    // Check is returning the operation into "multiplicand".
-    BOOST_CHECK_EQUAL( multiplicandId, GetResultIdAndCheckValid() );
+    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( shiftLabel );
+    ExpectAddSingleOperandInstruction( multiplicandId, Opcode::LS, multiplicandId, sequence );
 
-    m_currInstrIndex = 9u;
-    CheckInstrAttributes( Opcode::RS, multiplierId, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    // Check is returning the operation into "multiplier".
-    BOOST_CHECK_EQUAL( multiplierId, GetResultIdAndCheckValid() );
+    ExpectAddSingleOperandInstruction( multiplierId, Opcode::RS, multiplierId, sequence );
 
-    m_currInstrIndex = 10u;
     constexpr uint8_t expectedSubAmount{ 1u };
-    CheckInstrAttributes( Opcode::SUB, bitCounterId, expectedSubAmount, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    // Check is returning the operation into "bit counter".
-    BOOST_CHECK_EQUAL( bitCounterId, GetResultIdAndCheckValid() );
+    ExpectAddInstruction( bitCounterId, Opcode::SUB, bitCounterId, expectedSubAmount, sequence );
 
-    m_currInstrIndex = 11u;
     constexpr uint8_t expectedCompValue{ 0u };
-    CheckInstrAttributes( Opcode::BRGT, bitCounterId, expectedCompValue, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( mainLoopLabel, GetResultIdAndCheckValid() ); // Check is branching back to start of main loop.
+    ExpectAddInstruction( mainLoopLabel, Opcode::BRGT, bitCounterId, expectedCompValue, sequence );
 
-    // Check all ID and label values are unique (i.e. they are being used correctly and not duplicating one another).
-    std::vector< std::string > ids{ resultId, multiplierId, multiplicandId, bitCounterId, andResultId };
-    CheckStringsAreUnique( ids );
-    std::vector< std::string > labels{ mainLoopLabel, shiftLabel };
-    CheckStringsAreUnique( labels );
+
+    Operand result = m_generator->Multiply( operand1, operand2 );
 
     // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
     BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
 }
 
@@ -335,9 +303,9 @@ BOOST_AUTO_TEST_SUITE( DivideTests )
  */
 BOOST_AUTO_TEST_CASE( Divide_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
@@ -345,25 +313,22 @@ BOOST_AUTO_TEST_CASE( Divide_InvalidOperands )
  */
 BOOST_AUTO_TEST_CASE( DivideByZero )
 {
-    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_zeroOperand, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Divide( c_stringOp, c_zeroOperand ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for division will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals, and it does not add any instructions.
  */
 BOOST_AUTO_TEST_CASE( Divide_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Divide( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->Divide( c_literalOp_Five, c_literalOp_Two );
 
     Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
     Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 / literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
@@ -374,12 +339,6 @@ BOOST_AUTO_TEST_CASE( Divide_TwoLiterals )
  */
 BOOST_AUTO_TEST_CASE( Divide_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t initialSize{ m_instructions.size() };
-
-    BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Divide( c_literalOp_Five, c_stringOp, m_instructions );
-
     /**
      * Expect the following algorithm:
      *
@@ -396,58 +355,47 @@ BOOST_AUTO_TEST_CASE( Divide_Identifier )
      * (return result)
      */
 
-    constexpr size_t expectedNumInstructionsAdded{ 7u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
 
-    m_currInstrIndex = 0u;
-    BOOST_CHECK_EQUAL( nullptr, m_instructions[m_currInstrIndex] );
+    mock::sequence sequence;
 
     // First 3 instructions should be initialising the temp vars.
 
-    m_currInstrIndex = 1u;
+    const std::string resultId{ "result" };
     constexpr uint8_t expectedResultInit{ 0u };
-    CheckInstrAttributes( Opcode::UNUSED, expectedResultInit, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( resultId, expectedResultInit, sequence );
 
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string dividendId = GetResultIdAndCheckValid();
+    const std::string dividendId{ "dividend" };
+    CheckNewTempVarCalls( dividendId, operand1, sequence );
 
-    m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string quotientId = GetResultIdAndCheckValid();
+    const std::string quotientId{ "quotient" };
+    CheckNewTempVarCalls( quotientId, operand2, sequence );
 
     // Main loop:
 
-    m_currInstrIndex = 4u;
-    CheckInstrAttributes( Opcode::BRGT, quotientId, dividendId, ExpectLabel::LBL_TRUE, ExpectResult::RES_TRUE );
     // Expect to be branching to the end label. Check this at the end of the program.
-    std::string endLabel = GetResultIdAndCheckValid();
-    std::string mainLoopLabel = GetLabelAndCheckValid();
+    const std::string endLabel{ "endLabel" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    const std::string mainLoopLabel{ "mainLoopLabel" };
+    CheckGetAndSetLabelCalls( mainLoopLabel, sequence );
+    ExpectAddInstruction( endLabel, Opcode::BRGT, quotientId, dividendId, sequence );
 
-    m_currInstrIndex = 5u;
-    CheckInstrAttributes( Opcode::ADD, resultId, 1u, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+    const uint8_t increment{ 1u };
+    ExpectAddInstruction( resultId, Opcode::ADD, resultId, increment, sequence );
 
-    m_currInstrIndex = 6u;
-    CheckInstrAttributes( Opcode::SUB, dividendId, quotientId, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( dividendId, GetResultIdAndCheckValid() );
+    ExpectAddInstruction( dividendId, Opcode::SUB, dividendId, quotientId, sequence );
 
-    m_currInstrIndex = 7u;
-    CheckInstrAttributes( Opcode::BRU, {}, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( mainLoopLabel, GetResultIdAndCheckValid() ); // Check is branching to main loop
+    // Check is branching to main loop
+    ExpectAddNoOperandsInstruction( mainLoopLabel, Opcode::BRU, sequence );
 
-    // Check that the end label is returned next time a label is requested. TODO test this
-    //BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
 
-    // Check all ID and label values are unique (i.e. they are being used correctly and not duplicating one another).
-    std::vector< std::string > ids{ resultId, dividendId, quotientId };
-    CheckStringsAreUnique( ids );
-    std::vector< std::string > labels{ mainLoopLabel, endLabel };
-    CheckStringsAreUnique( labels );
+
+    Operand result = m_generator->Divide( operand1, operand2 );
 
     // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
     BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
 }
 
@@ -460,9 +408,9 @@ BOOST_AUTO_TEST_SUITE( ModuloTests )
  */
 BOOST_AUTO_TEST_CASE( Modulo_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
@@ -470,41 +418,32 @@ BOOST_AUTO_TEST_CASE( Modulo_InvalidOperands )
  */
 BOOST_AUTO_TEST_CASE( ModuloByZero )
 {
-    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_zeroOperand, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Modulo( c_stringOp, c_zeroOperand ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for modulo will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals, and it does not add any instructions.
  */
 BOOST_AUTO_TEST_CASE( Modulo_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-    Operand result = m_generator->Modulo( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->Modulo( c_literalOp_Five, c_literalOp_Two );
 
     Literal literal1{ std::get< Literal >( c_literalOp_Five ) };
     Literal literal2{ std::get< Literal >( c_literalOp_Two ) };
     Literal expectedResult{ static_cast< Literal >( literal1 % literal2 ) };
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( expectedResult, std::get< Literal >( result ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for modulo will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  *
  * We expect a repeated subtraction algorithm to be used.
  */
 BOOST_AUTO_TEST_CASE( Modulo_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t initialSize{ m_instructions.size() };
-
-    BOOST_CHECK_EQUAL( 1u, initialSize );
-    Operand result = m_generator->Modulo( c_literalOp_Five, c_stringOp, m_instructions );
-
     /**
      * Expect the following algorithm:
      *
@@ -521,58 +460,47 @@ BOOST_AUTO_TEST_CASE( Modulo_Identifier )
      * (return dividend)
      */
 
-    constexpr size_t expectedNumInstructionsAdded{ 7u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + initialSize, m_instructions.size() );
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
 
-    m_currInstrIndex = 0u;
-    BOOST_CHECK_EQUAL( nullptr, m_instructions[m_currInstrIndex] );
+    mock::sequence sequence;
 
     // First 3 instructions should be initialising the temp vars.
 
-    m_currInstrIndex = 1u;
+    const std::string resultId{ "result" };
     constexpr uint8_t expectedResultInit{ 0u };
-    CheckInstrAttributes( Opcode::UNUSED, expectedResultInit, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( resultId, expectedResultInit, sequence );
 
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( Opcode::UNUSED, c_literalOp_Five, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string dividendId = GetResultIdAndCheckValid();
+    const std::string dividendId{ "dividend" };
+    CheckNewTempVarCalls( dividendId, operand1, sequence );
 
-    m_currInstrIndex = 3u;
-    CheckInstrAttributes( Opcode::UNUSED, c_stringOp, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string quotientId = GetResultIdAndCheckValid();
+    const std::string quotientId{ "quotient" };
+    CheckNewTempVarCalls( quotientId, operand2, sequence );
 
     // Main loop:
 
-    m_currInstrIndex = 4u;
-    CheckInstrAttributes( Opcode::BRGT, quotientId, dividendId, ExpectLabel::LBL_TRUE, ExpectResult::RES_TRUE );
     // Expect to be branching to the end label. Check this at the end of the program.
-    std::string endLabel = GetResultIdAndCheckValid();
-    std::string mainLoopLabel = GetLabelAndCheckValid();
+    const std::string endLabel{ "endLabel" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    const std::string mainLoopLabel{ "mainLoopLabel" };
+    CheckGetAndSetLabelCalls( mainLoopLabel, sequence );
+    ExpectAddInstruction( endLabel, Opcode::BRGT, quotientId, dividendId, sequence );
 
-    m_currInstrIndex = 5u;
-    CheckInstrAttributes( Opcode::ADD, resultId, 1u, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+    const uint8_t increment{ 1u };
+    ExpectAddInstruction( resultId, Opcode::ADD, resultId, increment, sequence );
 
-    m_currInstrIndex = 6u;
-    CheckInstrAttributes( Opcode::SUB, dividendId, quotientId, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( dividendId, GetResultIdAndCheckValid() );
+    ExpectAddInstruction( dividendId, Opcode::SUB, dividendId, quotientId, sequence );
 
-    m_currInstrIndex = 7u;
-    CheckInstrAttributes( Opcode::BRU, {}, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( mainLoopLabel, GetResultIdAndCheckValid() ); // Check is branching to main loop
+    // Check is branching to main loop
+    ExpectAddNoOperandsInstruction( mainLoopLabel, Opcode::BRU, sequence );
 
-    // Check that the end label is returned next time a label is requested. TODO test this
-    //BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
 
-    // Check all ID and label values are unique (i.e. they are being used correctly and not duplicating one another).
-    std::vector< std::string > ids{ resultId, dividendId, quotientId };
-    CheckStringsAreUnique( ids );
-    std::vector< std::string > labels{ mainLoopLabel, endLabel };
-    CheckStringsAreUnique( labels );
+
+    Operand result = m_generator->Modulo( operand1, operand2 );
 
     // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
     BOOST_CHECK_EQUAL( dividendId, std::get< std::string >( result ) );
 }
 
@@ -587,46 +515,46 @@ BOOST_AUTO_TEST_SUITE( EqualsTests )
  */
 BOOST_AUTO_TEST_CASE( Equals_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Equals( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Equals( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for == will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals, and it does not add any instructions.
  */
 BOOST_AUTO_TEST_CASE( Equals_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // False case
-    Operand result = m_generator->Equals( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->Equals( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result ) );
 
     // True case
-    Operand result2 = m_generator->Equals( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Equals( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for == will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( Equals_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->Equals( c_literalOp_Five, c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
     const Literal valueIfTrue = c_trueLiteral;
-    CheckComparisonInstructions( Opcode::BRE, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRE, operand1, operand2, valueIfTrue );
+
+    Operand result = m_generator->Equals( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // EqualsTests
@@ -638,46 +566,46 @@ BOOST_AUTO_TEST_SUITE( NotEqualsTests )
  */
 BOOST_AUTO_TEST_CASE( NotEquals_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->NotEquals( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->NotEquals( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for != will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( NotEquals_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case
-    Operand result = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case
-    Operand result2 = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->NotEquals( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for != will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( NotEquals_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->NotEquals( c_literalOp_Five, c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
     const Literal valueIfTrue = c_falseLiteral;
-    CheckComparisonInstructions( Opcode::BRE, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRE, operand1, operand2, valueIfTrue );
+
+    Operand result = m_generator->NotEquals( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // NotEqualsTests
@@ -689,51 +617,51 @@ BOOST_AUTO_TEST_SUITE( LeqTests )
  */
 BOOST_AUTO_TEST_CASE( Leq_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Leq( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Leq( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for <= will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( Leq_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case - less than
-    Operand result = m_generator->Leq( c_literalOp_Two, c_literalOp_Five, m_instructions );
+    Operand result = m_generator->Leq( c_literalOp_Two, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // True case - equals
-    Operand result2 = m_generator->Leq( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Leq( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     // False case - greater than
-    Operand result3 = m_generator->Leq( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result3 = m_generator->Leq( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for <= will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( Leq_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
+    const Literal valueIfTrue = c_falseLiteral;
 
-    Operand result = m_generator->Leq( c_literalOp_Five, c_stringOp, m_instructions );
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRGT, operand1, operand2, valueIfTrue );
 
-    const Literal valueIfTrue = c_falseLiteral; // False if op1 > op2
-    CheckComparisonInstructions( Opcode::BRGT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+    Operand result = m_generator->Leq( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // LeqTests
@@ -745,51 +673,51 @@ BOOST_AUTO_TEST_SUITE( GeqTests )
  */
 BOOST_AUTO_TEST_CASE( Geq_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Geq( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->Geq( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for >= will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( Geq_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case - greater than
-    Operand result = m_generator->Geq( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->Geq( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // True case - equals
-    Operand result2 = m_generator->Geq( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->Geq( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     // False case - less than
-    Operand result3 = m_generator->Geq( c_literalOp_Two, c_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->Geq( c_literalOp_Two, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for >= will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( Geq_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->Geq( c_literalOp_Five, c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
     const Literal valueIfTrue = c_falseLiteral; // False if op1 < op2
-    CheckComparisonInstructions( Opcode::BRLT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRLT, operand1, operand2, valueIfTrue );
+
+    Operand result = m_generator->Geq( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GeqTests
@@ -801,51 +729,51 @@ BOOST_AUTO_TEST_SUITE( LessThanTests )
  */
 BOOST_AUTO_TEST_CASE( LessThan_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LessThan( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LessThan( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for < will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( LessThan_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // False case - greater than
-    Operand result = m_generator->LessThan( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->LessThan( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result ) );
 
     // False case - equals
-    Operand result2 = m_generator->LessThan( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->LessThan( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     // True case - less than
-    Operand result3 = m_generator->LessThan( c_literalOp_Two, c_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->LessThan( c_literalOp_Two, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for < will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( LessThan_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->LessThan( c_literalOp_Five, c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
     const Literal valueIfTrue = c_trueLiteral;
-    CheckComparisonInstructions( Opcode::BRLT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRLT, operand1, operand2, valueIfTrue );
+
+    Operand result = m_generator->LessThan( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // LessThanTests
@@ -857,51 +785,51 @@ BOOST_AUTO_TEST_SUITE( GreaterThanTests )
  */
 BOOST_AUTO_TEST_CASE( GreaterThan_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->GreaterThan( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->GreaterThan( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for > will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( GreaterThan_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case - greater than
-    Operand result = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case - equals
-    Operand result2 = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Five, m_instructions );
+    Operand result2 = m_generator->GreaterThan( c_literalOp_Five, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     // False case - less than
-    Operand result3 = m_generator->GreaterThan( c_literalOp_Two, c_literalOp_Five, m_instructions );
+    Operand result3 = m_generator->GreaterThan( c_literalOp_Two, c_literalOp_Five );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for > will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( GreaterThan_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->GreaterThan( c_literalOp_Five, c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand1{ c_literalOp_Five };
+    const Operand operand2{ c_stringOp };
     const Literal valueIfTrue = c_trueLiteral;
-    CheckComparisonInstructions( Opcode::BRGT, c_literalOp_Five, c_stringOp, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRGT, operand1, operand2, valueIfTrue );
+
+    Operand result = m_generator->GreaterThan( operand1, operand2 );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // GreaterThanTests
@@ -913,44 +841,43 @@ BOOST_AUTO_TEST_SUITE( LogicalNotTests )
  */
 BOOST_AUTO_TEST_CASE( LogicalNot_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->LogicalNot( c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalNot( c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for logical NOT will return a numeric value with the operation result
- * ifthe operand is a literal, and it does not add any instructions to the given container.
+ * ifthe operand is a literal.
  */
 BOOST_AUTO_TEST_CASE( LogicalNot_Literal )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case
-    Operand result = m_generator->LogicalNot( c_zeroOperand, m_instructions );
+    Operand result = m_generator->LogicalNot( c_zeroOperand );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case
-    Operand result2 = m_generator->LogicalNot( c_literalOp_Two, m_instructions );
+    Operand result2 = m_generator->LogicalNot( c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for logical NOT will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( LogicalNot_Identifier )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
-    Operand result = m_generator->LogicalNot( c_stringOp, m_instructions );
-
+    const std::string resultIdToReturn{ "result" };
+    const Operand operand{ c_stringOp };
     const Literal valueIfTrue = c_trueLiteral;
-    CheckComparisonInstructions( Opcode::BRGT, c_stringOp, c_zeroOperand, valueIfTrue, currInstructionsSize, result );
+
+    ExpectComparisonInstructions( resultIdToReturn, Opcode::BRGT, operand, c_zeroOperand, valueIfTrue );
+
+    Operand result = m_generator->LogicalNot( operand );
+
+    // Check the returned operand is pointing to the result id string
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
+    BOOST_CHECK_EQUAL( resultIdToReturn, std::get< std::string >( result ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // LogicalNotTests
@@ -962,115 +889,97 @@ BOOST_AUTO_TEST_SUITE( LogicalOrTests )
  */
 BOOST_AUTO_TEST_CASE( LogicalOr_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LogicalOr( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalOr( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for logical OR will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( LogicalOr_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case - both >0
-    Operand result = m_generator->LogicalOr( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->LogicalOr( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // True case - one operand is >0, one ==0
-    Operand result2 = m_generator->LogicalOr( c_zeroOperand, c_literalOp_Two, m_instructions );
+    Operand result2 = m_generator->LogicalOr( c_zeroOperand, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result2 ) );
 
     // False case - both zero
-    Operand result3 = m_generator->LogicalOr( c_zeroOperand, c_zeroOperand, m_instructions );
+    Operand result3 = m_generator->LogicalOr( c_zeroOperand, c_zeroOperand );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for logical OR will return a true value if one operand is a literal
- * representing a >0 value, and it will return the other operand if the literal is 0. Check it does not add any
- * instructions to the instructions container.
+ * representing a >0 value, and it will return the other operand if the literal is 0.
  */
 BOOST_AUTO_TEST_CASE( LogicalOr_OneLiteral )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+    // True cases - the literal is >0
 
-    // True case - the literal is >0
-
-    Operand trueResult1 = m_generator->LogicalOr( c_literalOp_Five, c_stringOp, m_instructions );
+    Operand trueResult1 = m_generator->LogicalOr( c_literalOp_Five, c_stringOp );
     BOOST_REQUIRE( std::holds_alternative< Literal >( trueResult1 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( trueResult1 ) );
 
-    Operand trueResult2 = m_generator->LogicalOr( c_stringOp, c_literalOp_Two, m_instructions );
+    Operand trueResult2 = m_generator->LogicalOr( c_stringOp, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( trueResult2 ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( trueResult2 ) );
 
 
-    // The literal is 0
+    // Cases where the literal is 0
 
-    Operand op2Return = m_generator->LogicalOr( c_zeroOperand, c_stringOp, m_instructions );
+    Operand op2Return = m_generator->LogicalOr( c_zeroOperand, c_stringOp );
     // Expect it to return operand 2 in this case.
     BOOST_REQUIRE( std::holds_alternative< std::string >( op2Return ) );
     BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op2Return ) );
 
-    Operand op1Return = m_generator->LogicalOr( c_stringOp, c_zeroOperand, m_instructions );
+    Operand op1Return = m_generator->LogicalOr( c_stringOp, c_zeroOperand );
     // Expect it to return operand 2 in this case.
     BOOST_REQUIRE( std::holds_alternative< std::string >( op1Return ) );
     BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op1Return ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for logical OR will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( LogicalOr_TwoIdentifiers )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
     const Opcode expectedBranchOpcode{ BRGT };
     const Operand operand1{ c_stringOp };
     const Operand operand2{ c_stringOp2 };
     const Literal valueIfBranchTrue{ c_trueLiteral };
 
-    Operand result = m_generator->LogicalOr( operand1, operand2, m_instructions );
+    mock::sequence sequence;
 
 
-    constexpr size_t expectedNumInstructionsAdded{ 4u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + currInstructionsSize, m_instructions.size() );
-
-    m_currInstrIndex = 1u;
+    const std::string resultId{ "result" };
     uint8_t initialValue{ valueIfBranchTrue };
-    CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( resultId, initialValue, sequence );
 
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( expectedBranchOpcode, operand1, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string endLabel = GetResultIdAndCheckValid();
-    m_currInstrIndex = 3u;
-    CheckInstrAttributes( expectedBranchOpcode, operand2, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( endLabel, GetResultIdAndCheckValid() );
+    const std::string endLabel{ "endLabel" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
 
-    m_currInstrIndex = 4u;
+    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
+    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
-    CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+    ExpectAddAssignmentInstruction( resultId, nonBranchValue, sequence );
 
-    // Check that the end label is returned next time a label is requested. TODO test this
-    //BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+
+
+    Operand result = m_generator->LogicalOr( operand1, operand2 );
 
     // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
     BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
 }
 
@@ -1083,35 +992,31 @@ BOOST_AUTO_TEST_SUITE( LogicalAndTests )
  */
 BOOST_AUTO_TEST_CASE( LogicalAnd_InvalidOperands )
 {
-    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_stringOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_stringOp, c_emptyOp, m_instructions ), std::invalid_argument );
-    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_emptyOp, m_instructions ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_stringOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_stringOp, c_emptyOp ), std::invalid_argument );
+    BOOST_CHECK_THROW( m_generator->LogicalAnd( c_emptyOp, c_emptyOp ), std::invalid_argument );
 }
 
 /**
  * Tests that the method for generating TAC for logical AND will return a numeric value with the operation result
- * if both operands are literals, and it does not add any instructions to the given container.
+ * if both operands are literals.
  */
 BOOST_AUTO_TEST_CASE( LogicalAnd_TwoLiterals )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
-
     // True case - both >0
-    Operand result = m_generator->LogicalAnd( c_literalOp_Five, c_literalOp_Two, m_instructions );
+    Operand result = m_generator->LogicalAnd( c_literalOp_Five, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result ) );
     BOOST_CHECK_EQUAL( c_trueLiteral, std::get< Literal >( result ) );
 
     // False case - one operand is >0, one ==0
-    Operand result2 = m_generator->LogicalAnd( c_zeroOperand, c_literalOp_Two, m_instructions );
+    Operand result2 = m_generator->LogicalAnd( c_zeroOperand, c_literalOp_Two );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result2 ) );
 
     // False case - both zero
-    Operand result3 = m_generator->LogicalAnd( c_zeroOperand, c_zeroOperand, m_instructions );
+    Operand result3 = m_generator->LogicalAnd( c_zeroOperand, c_zeroOperand );
     BOOST_REQUIRE( std::holds_alternative< Literal >( result3 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( result3 ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
@@ -1122,77 +1027,64 @@ BOOST_AUTO_TEST_CASE( LogicalAnd_TwoLiterals )
  */
 BOOST_AUTO_TEST_CASE( LogicalAnd_OneLiteral )
 {
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
+    // False cases - the literal is 0
 
-    // False case - the literal is 0
-
-    Operand falseResult1 = m_generator->LogicalAnd( c_zeroOperand, c_stringOp, m_instructions );
+    Operand falseResult1 = m_generator->LogicalAnd( c_zeroOperand, c_stringOp );
     BOOST_REQUIRE( std::holds_alternative< Literal >( falseResult1 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( falseResult1 ) );
 
-    Operand falseResult2 = m_generator->LogicalAnd( c_stringOp, c_zeroOperand, m_instructions );
+    Operand falseResult2 = m_generator->LogicalAnd( c_stringOp, c_zeroOperand );
     BOOST_REQUIRE( std::holds_alternative< Literal >( falseResult2 ) );
     BOOST_CHECK_EQUAL( c_falseLiteral, std::get< Literal >( falseResult2 ) );
 
 
-    // The literal is >0
+    // Cases where the literal is >0
 
-    Operand op2Return = m_generator->LogicalAnd( c_literalOp_Two, c_stringOp, m_instructions );
+    Operand op2Return = m_generator->LogicalAnd( c_literalOp_Two, c_stringOp );
     // Expect it to return operand 2 in this case.
     BOOST_REQUIRE( std::holds_alternative< std::string >( op2Return ) );
     BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op2Return ) );
 
-    Operand op1Return = m_generator->LogicalAnd( c_stringOp, c_literalOp_Two, m_instructions );
+    Operand op1Return = m_generator->LogicalAnd( c_stringOp, c_literalOp_Two );
     // Expect it to return operand 1 in this case.
     BOOST_REQUIRE( std::holds_alternative< std::string >( op1Return ) );
     BOOST_CHECK_EQUAL( std::get< std::string >( c_stringOp ), std::get< std::string >( op1Return ) );
-
-    BOOST_CHECK_EQUAL( 0u, m_instructions.size() );
 }
 
 /**
  * Tests that the method for generating TAC for logical AND will return an identifier of a temporary storage of the
- * result, and that the necessary pre-instructions are appended to the given container.
+ * result.
  */
 BOOST_AUTO_TEST_CASE( LogicalAnd_TwoIdentifiers )
 {
-    m_instructions.push_back( nullptr ); // Initialise with an element to test that previous contents are not removed.
-    size_t currInstructionsSize{ m_instructions.size() };
-    BOOST_CHECK_EQUAL( 1u, currInstructionsSize );
-
     const Opcode expectedBranchOpcode{ BRGT };
     const Operand operand1{ c_stringOp };
     const Operand operand2{ c_stringOp2 };
     const Literal valueIfBranchTrue{ c_falseLiteral };
 
-    Operand result = m_generator->LogicalAnd( operand1, operand2, m_instructions );
+    mock::sequence sequence;
 
 
-    constexpr size_t expectedNumInstructionsAdded{ 4u };
-    BOOST_REQUIRE_EQUAL( expectedNumInstructionsAdded + currInstructionsSize, m_instructions.size() );
-
-    m_currInstrIndex = 1u;
+    const std::string resultId{ "result" };
     uint8_t initialValue{ valueIfBranchTrue };
-    CheckInstrAttributes( Opcode::UNUSED, initialValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string resultId = GetResultIdAndCheckValid();
+    CheckNewTempVarCalls( resultId, initialValue, sequence );
 
-    m_currInstrIndex = 2u;
-    CheckInstrAttributes( expectedBranchOpcode, operand1, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    std::string endLabel = GetResultIdAndCheckValid();
-    m_currInstrIndex = 3u;
-    CheckInstrAttributes( expectedBranchOpcode, operand2, c_zeroOperand, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( endLabel, GetResultIdAndCheckValid() );
+    const std::string endLabel{ "endLabel" };
+    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
 
-    m_currInstrIndex = 4u;
+    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
+    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
-    CheckInstrAttributes( Opcode::UNUSED, nonBranchValue, {}, ExpectLabel::LBL_FALSE, ExpectResult::RES_TRUE );
-    BOOST_CHECK_EQUAL( resultId, GetResultIdAndCheckValid() );
+    ExpectAddAssignmentInstruction( resultId, nonBranchValue, sequence );
 
-    // Check that the end label is returned next time a label is requested. TODO test this
-    // BOOST_CHECK_EQUAL( endLabel, m_generator->GetNewLabel() );
+    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+
+
+    Operand result = m_generator->LogicalAnd( operand1, operand2 );
 
     // Check the returned operand is pointing to the result id string
-    BOOST_CHECK( std::holds_alternative< std::string >( result ) );
+    BOOST_REQUIRE( std::holds_alternative< std::string >( result ) );
     BOOST_CHECK_EQUAL( resultId, std::get< std::string >( result ) );
 }
 

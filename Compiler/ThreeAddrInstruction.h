@@ -59,14 +59,14 @@ namespace TAC
         using Ptr = std::shared_ptr< ThreeAddrInstruction >;
 
         ThreeAddrInstruction(
-            std::string resultId,
+            std::string target,
             Opcode opcode,
             Operand op1,
             Operand op2,
             std::string label = "" // Only used if instruction has label attached
         )
-        : m_result( resultId ),
-          m_operation( opcode ),
+        : m_target( target ),
+          m_opcode( opcode ),
           m_operand1( op1 ),
           m_operand2( op2 ),
           m_label( label )
@@ -75,12 +75,12 @@ namespace TAC
 
         // Overloaded constructor for assignment instructions, that take no opcode and one operand.
         ThreeAddrInstruction(
-            std::string resultId,
+            std::string target,
             Operand op1,
             std::string label = "" // Only used if instruction has label attached
         )
-        : m_result( resultId ),
-          m_operation( Opcode::UNUSED ),
+        : m_target( target ),
+          m_opcode( Opcode::UNUSED ),
           m_operand1( op1 ),
           m_operand2(),
           m_label( label )
@@ -90,8 +90,8 @@ namespace TAC
         bool
         operator==( const ThreeAddrInstruction& comparisonInstr ) const
         {
-            return comparisonInstr.m_result == m_result
-                   && comparisonInstr.m_operation == m_operation
+            return comparisonInstr.m_target == m_target
+                   && comparisonInstr.m_opcode == m_opcode
                    // std::variant equals operators will compare values if they are at the same index.
                    && comparisonInstr.m_operand1 == m_operand1
                    && comparisonInstr.m_operand2 == m_operand2
@@ -99,10 +99,10 @@ namespace TAC
         }
 
         // The target of the operation, i.e. where the result will be stored.
-        std::string m_result;
+        std::string m_target;
 
         // Operation type.
-        Opcode m_operation;
+        Opcode m_opcode;
 
         Operand m_operand1;
         Operand m_operand2;
@@ -110,7 +110,5 @@ namespace TAC
         // Optional label assigned to this instruction.
         std::string m_label;
     };
-
-    using Instructions = std::vector< ThreeAddrInstruction::Ptr >;
 
 } // namespace TAC

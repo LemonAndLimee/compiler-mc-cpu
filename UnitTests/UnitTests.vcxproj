@@ -90,6 +90,9 @@
     <ClCompile Include="TokenTests.cpp" />
     <ClCompile Include="UnitTestsMain.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="TacInstructionFactoryMock.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

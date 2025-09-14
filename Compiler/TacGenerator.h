@@ -21,24 +21,23 @@ public:
 
     TacGenerator( TacInstructionFactory::Ptr instrFactory );
 
-    Operand Multiply( Operand op1, Operand op2, Instructions& instructions );
-    Operand Divide( Operand op1, Operand op2, Instructions& instructions );
-    Operand Modulo( Operand op1, Operand op2, Instructions& instructions );
+    Operand Multiply( Operand op1, Operand op2 );
+    Operand Divide( Operand op1, Operand op2 );
+    Operand Modulo( Operand op1, Operand op2 );
 
-    Operand Equals( Operand op1, Operand op2, Instructions& instructions );
-    Operand NotEquals( Operand op1, Operand op2, Instructions& instructions );
-    Operand Leq( Operand op1, Operand op2, Instructions& instructions );
-    Operand Geq( Operand op1, Operand op2, Instructions& instructions );
-    Operand LessThan( Operand op1, Operand op2, Instructions& instructions );
-    Operand GreaterThan( Operand op1, Operand op2, Instructions& instructions );
+    Operand Equals( Operand op1, Operand op2 );
+    Operand NotEquals( Operand op1, Operand op2 );
+    Operand Leq( Operand op1, Operand op2 );
+    Operand Geq( Operand op1, Operand op2 );
+    Operand LessThan( Operand op1, Operand op2 );
+    Operand GreaterThan( Operand op1, Operand op2 );
 
-    Operand LogicalNot( Operand op1, Instructions& instructions );
-    Operand LogicalOr( Operand op1, Operand op2, Instructions& instructions );
-    Operand LogicalAnd( Operand op1, Operand op2, Instructions& instructions );
+    Operand LogicalNot( Operand op1 );
+    Operand LogicalOr( Operand op1, Operand op2 );
+    Operand LogicalAnd( Operand op1, Operand op2 );
 
 private:
-    Operand AddComparisonInstructions( Instructions& instructions,
-                                       const std::string& resultName,
+    Operand AddComparisonInstructions( const std::string& resultName,
                                        Opcode branchType,
                                        Operand branchOperand1,
                                        Operand branchOperand2,
@@ -48,7 +47,6 @@ private:
     enum DivMod{ DIV, MOD };
     Operand AddDivModInstructions( Operand op1,
                                    Operand op2,
-                                   Instructions& instructions,
                                    DivMod returnType );
 
     TacInstructionFactory::Ptr m_instructionFactory;

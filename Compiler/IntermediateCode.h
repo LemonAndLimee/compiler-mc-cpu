@@ -22,25 +22,23 @@ public:
 
     IntermediateCode( TacInstructionFactory::Ptr instrFactory, TacGenerator::Ptr tacGenerator );
 
-    Instructions GenerateIntermediateCode( AstNode::Ptr astNode );
+    void GenerateIntermediateCode( AstNode::Ptr astNode );
 
 private:
-    void ConvertAstToInstructions( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    void ConvertAstToInstructions( AstNode::Ptr astNode, SymbolTable::Ptr currentSt );
 
-    void ConvertAssign( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    void ConvertAssign( AstNode::Ptr astNode, SymbolTable::Ptr currentSt );
     std::string GetIdentifierFromLhsNode( AstNode::Ptr lhsNode );
 
-    void ConvertIfElse( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
-    void ConvertForLoop( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
-    void ConvertWhileLoop( AstNode::Ptr astNode, Instructions& instructions, SymbolTable::Ptr currentSt );
+    void ConvertIfElse( AstNode::Ptr astNode, SymbolTable::Ptr currentSt );
+    void ConvertForLoop( AstNode::Ptr astNode, SymbolTable::Ptr currentSt );
+    void ConvertWhileLoop( AstNode::Ptr astNode, SymbolTable::Ptr currentSt );
 
     std::string CalculateUniqueIdentifier( const std::string& currentIdentifier, SymbolTable::Ptr symbolTable );
 
     using ExpressionInfo = std::tuple< Opcode, Operand, Operand >;
-    ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode,
-                                      Instructions& preInstructions,
-                                      SymbolTable::Ptr currentSt );
-    Operand GetOperandFromExpressionInfo( ExpressionInfo info, Instructions& instructions );
+    ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode, SymbolTable::Ptr currentSt );
+    Operand GetOperandFromExpressionInfo( ExpressionInfo info );
 
     // Factory class for creating instructions.
     TacInstructionFactory::Ptr m_instructionFactory;
