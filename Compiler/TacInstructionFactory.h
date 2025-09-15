@@ -20,7 +20,6 @@ public:
     virtual std::string GetNewTempVar( std::string hrfName = "temp" );
     virtual std::string GetNewLabel( std::string hrfName = "label" );
 
-    virtual std::string GetNextInstructionLabel();
     virtual void SetNextInstructionLabel( const std::string& label );
 
     virtual void AddInstruction( std::string target, Opcode opcode, Operand operand1, Operand operand2 );
@@ -28,7 +27,12 @@ public:
     virtual void AddNoOperandsInstruction( std::string target, Opcode opcode );
     virtual void AddAssignmentInstruction( std::string target, Operand operand );
 
+    virtual void SetInstructionBranchToNextLabel( ThreeAddrInstruction::Ptr instruction, std::string labelIfNotExists );
+
+    virtual ThreeAddrInstruction::Ptr GetLatestInstruction();
     virtual Instructions GetInstructions();
+
+    static inline const std::string PLACEHOLDER = "PLACEHOLDER";
 
 protected:
     // Storage of created instructions.

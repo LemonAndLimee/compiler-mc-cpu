@@ -49,17 +49,6 @@ TacInstructionFactory::GetNewLabel(
 }
 
 /**
- * \brief  Returns the label to be attached to the next instruction.
- *
- * \return  The next instruction label, or an empty string if this has not been set.
- */
-std::string
-TacInstructionFactory::GetNextInstructionLabel()
-{
-    return m_nextInstrLabel;
-}
-
-/**
  * \brief  Sets the next instruction label. This should only be called if one has not already been set.
  *
  * \param[in]  label  The next instruction label.
@@ -155,6 +144,60 @@ TacInstructionFactory::AddAssignmentInstruction(
     Opcode emptyOpcode{ UNUSED };
     Operand emptyOperand{};
     AddInstruction( target, emptyOpcode, operand, emptyOperand );
+}
+
+/**
+ * \brief  Replaces the target of a given branch instruction so that it points to the current 'next instruction'. If
+ *         there is no configured next label, it creates one and assigns this.
+ *
+ * \param[in]  instruction       The branch instruction to redirect.
+ * \param[in]  labelIfNotExists  If there isn't a next label, this is used as the HRF prompt for creating a new one.
+ */
+void
+TacInstructionFactory::SetInstructionBranchToNextLabel(
+    ThreeAddrInstruction::Ptr instruction,
+    std::string labelIfNotExists
+)
+{
+    if ( nullptr == instruction )
+    {
+        LOG_ERROR_AND_THROW( "Passed a nullptr instruction.", std::invalid_argument );
+    }
+    switch ( instruction->m_opcode )
+    {
+    case BRU:
+    case BRZ:
+    case BRE:
+    case BRLT:
+    case BRGT:
+        break;
+    default:
+        LOG_ERROR_AND_THROW( "This method can only be called on a branch instruction. Opcode: "
+                             + std::to_string( instruction->m_opcode ), std::invalid_argument );
+    }
+
+    if ( "" == m_nextInstrLabel )
+    {
+        std::string endLabel = GetNewLabel( labelIfNotExists );
+        m_nextInstrLabel = endLabel;
+    }
+
+    instruction->m_target = m_nextInstrLabel;
+}
+
+/**
+ * \brief  Returns the most recently added instruction pointer.
+ *
+ * \return  The latest instruction pointer.
+ */
+ThreeAddrInstruction::Ptr
+TacInstructionFactory::GetLatestInstruction()
+{
+    if ( m_instructions.empty() )
+    {
+        LOG_ERROR_AND_THROW( "Trying to access latest instruction from empty collection.", std::runtime_error );
+    }
+    return m_instructions.back();
 }
 
 /**

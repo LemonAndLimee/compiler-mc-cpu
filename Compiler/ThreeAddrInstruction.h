@@ -73,20 +73,6 @@ namespace TAC
         {
         }
 
-        // Overloaded constructor for assignment instructions, that take no opcode and one operand.
-        ThreeAddrInstruction(
-            std::string target,
-            Operand op1,
-            std::string label = "" // Only used if instruction has label attached
-        )
-        : m_target( target ),
-          m_opcode( Opcode::UNUSED ),
-          m_operand1( op1 ),
-          m_operand2(),
-          m_label( label )
-        {
-        }
-
         bool
         operator==( const ThreeAddrInstruction& comparisonInstr ) const
         {

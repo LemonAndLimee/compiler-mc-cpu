@@ -9,6 +9,7 @@ public:
     using Ptr = std::shared_ptr< InstructionFactory_Test >;
     using TacInstructionFactory::TacInstructionFactory;
     using TacInstructionFactory::m_instructions;
+    using TacInstructionFactory::m_nextInstrLabel;
 };
 
 class TacInstrFactoryTestsFixture
@@ -39,29 +40,21 @@ BOOST_AUTO_TEST_CASE( GetNewTempVar )
  */
 BOOST_AUTO_TEST_CASE( GetNewLabel )
 {
-    BOOST_CHECK_EQUAL( "label0", m_instructionFactory->GetNewLabel() );
-    BOOST_CHECK_EQUAL( "label1", m_instructionFactory->GetNewLabel() );
+    BOOST_CHECK_EQUAL( "0label", m_instructionFactory->GetNewLabel() );
+    BOOST_CHECK_EQUAL( "1label", m_instructionFactory->GetNewLabel() );
     const std::string tempLabel = "testLabel";
-    BOOST_CHECK_EQUAL( tempLabel + "2", m_instructionFactory->GetNewLabel( tempLabel ) );
+    BOOST_CHECK_EQUAL( "2" + tempLabel, m_instructionFactory->GetNewLabel( tempLabel ) );
 }
 
 /**
  * Tests that the method for getting the next instruction label returns an empty string if one has not been set.
  */
-BOOST_AUTO_TEST_CASE( GetNextLabel_DoesNotExist )
+BOOST_AUTO_TEST_CASE( SetNextLabel )
 {
-    BOOST_CHECK_EQUAL( "", m_instructionFactory->GetNextInstructionLabel() );
-}
-
-/**
- * Tests that the method for getting the next instruction label returns an empty string if one has not been set.
- */
-BOOST_AUTO_TEST_CASE( GetSetNextLabel )
-{
-    BOOST_CHECK_EQUAL( "", m_instructionFactory->GetNextInstructionLabel() );
+    BOOST_CHECK_EQUAL( "", m_instructionFactory->m_nextInstrLabel );
     const std::string testLabel = "testLabel";
     m_instructionFactory->SetNextInstructionLabel( testLabel );
-    BOOST_CHECK_EQUAL( testLabel, m_instructionFactory->GetNextInstructionLabel() );
+    BOOST_CHECK_EQUAL( testLabel, m_instructionFactory->m_nextInstrLabel );
 }
 
 /**
@@ -69,7 +62,7 @@ BOOST_AUTO_TEST_CASE( GetSetNextLabel )
  */
 BOOST_AUTO_TEST_CASE( SetNextLabel_AlreadyExists )
 {
-    BOOST_CHECK_EQUAL( "", m_instructionFactory->GetNextInstructionLabel() );
+    BOOST_CHECK_EQUAL( "", m_instructionFactory->m_nextInstrLabel );
     const std::string testLabel = "testLabel";
     m_instructionFactory->SetNextInstructionLabel( testLabel );
     BOOST_CHECK_THROW( m_instructionFactory->SetNextInstructionLabel( testLabel ), std::runtime_error );
@@ -191,6 +184,74 @@ BOOST_AUTO_TEST_CASE( AddAssignmentInstruction )
 }
 
 BOOST_AUTO_TEST_SUITE_END() // AddInstructionTests
+
+/**
+ * Tests that the method for pointing a branch instruction to the end will throw if given a nullptr instruction.
+ */
+BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_NullptrInstr )
+{
+    BOOST_CHECK_THROW( m_instructionFactory->SetInstructionBranchToNextLabel( nullptr, "" ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for pointing a branch instruction to the end will throw if given a non-branch instruction.
+ */
+BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_NonBranchInstr )
+{
+    const std::string target{ "target" };
+    constexpr Opcode opcode{ LS }; // Non-branch opcode
+    const Operand operand{ 5u };
+
+    ThreeAddrInstruction::Ptr instr = std::make_shared< ThreeAddrInstruction >( target, opcode, operand, operand );
+    BOOST_CHECK_THROW( m_instructionFactory->SetInstructionBranchToNextLabel( instr, "" ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for pointing a branch instruction to the end will create a new end label first if the 'next
+ * instruction label' isn't already set, then assign it to the target of the given instruction.
+ */
+BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_CreatesNewEndLabel )
+{
+    const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
+    constexpr Opcode opcode{ BRU };
+    const Operand operand{ 5u }; // Operands don't matter for this test
+
+    ThreeAddrInstruction::Ptr instr
+        = std::make_shared< ThreeAddrInstruction >( placeholderTarget, opcode, operand, operand );
+
+    BOOST_REQUIRE_EQUAL( "", m_instructionFactory->m_nextInstrLabel );
+    BOOST_REQUIRE_EQUAL( placeholderTarget, instr->m_target );
+    m_instructionFactory->SetInstructionBranchToNextLabel( instr, "end" );
+
+    std::string endLabel = m_instructionFactory->m_nextInstrLabel;
+    BOOST_CHECK_NE( "", endLabel );
+    BOOST_CHECK_EQUAL( endLabel, instr->m_target );
+}
+
+/**
+ * Tests that the method for pointing a branch instruction to the end will assign the existing end label to the target
+ * of the given instruction.
+ */
+BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_ExistingEndLabel )
+{
+    const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
+    constexpr Opcode opcode{ BRU };
+    const Operand operand{ 5u }; // Operands don't matter for this test
+
+    ThreeAddrInstruction::Ptr instr
+        = std::make_shared< ThreeAddrInstruction >( placeholderTarget, opcode, operand, operand );
+    BOOST_REQUIRE_EQUAL( placeholderTarget, instr->m_target );
+
+    const std::string predefinedEndLabel{ "endLabel" };
+    m_instructionFactory->SetNextInstructionLabel( predefinedEndLabel );
+    BOOST_REQUIRE_EQUAL( predefinedEndLabel, m_instructionFactory->m_nextInstrLabel );
+
+    m_instructionFactory->SetInstructionBranchToNextLabel( instr, "end" );
+
+    // Check the 'next label' has not been changed since it was already set to a value.
+    BOOST_CHECK_EQUAL( predefinedEndLabel, m_instructionFactory->m_nextInstrLabel );
+    BOOST_CHECK_EQUAL( predefinedEndLabel, instr->m_target );
+}
 
 /**
  * Tests that the method for getting instructions successfully returns the stored instructions container.

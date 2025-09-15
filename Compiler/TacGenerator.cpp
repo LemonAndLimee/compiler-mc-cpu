@@ -218,10 +218,12 @@ TacExpressionGenerator::AddDivModInstructions(
 
 
     // Main loop
-    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
     std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "divLoop" );
     m_instructionFactory->SetNextInstructionLabel( mainLoopLabel );
-    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, quotient, dividend );
+
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, quotient, dividend );
+    // Retrieve pointer to this instruction to replace the target label at the end.
+    ThreeAddrInstruction::Ptr branchToEndInstr = m_instructionFactory->GetLatestInstruction();
 
     constexpr uint8_t increment{ 1u };
     m_instructionFactory->AddInstruction( result, Opcode::ADD, result, increment );
@@ -229,7 +231,7 @@ TacExpressionGenerator::AddDivModInstructions(
 
     m_instructionFactory->AddNoOperandsInstruction( mainLoopLabel, Opcode::BRU );
 
-    m_instructionFactory->SetNextInstructionLabel( endLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "end" );
 
     if ( DivMod::DIV == returnType )
     {
@@ -504,51 +506,6 @@ TacExpressionGenerator::GreaterThan(
 }
 
 /**
- * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
- *         pattern, this is a shared utility method.
- *
- * \param[in]  resultName         Name with which to create the temp var to store the comparison result.
- * \param[in]  branchType         The opcode describing the desired branching operation.
- * \param[in]  branchOperand1     The first operand in the branch instruction.
- * \param[in]  branchOperand2     The second operand in the branch instruction.
- * \param[in]  valueIfBranchTrue  The value the result will have if branch condition is true.
- *
- * \return  Operand describing the result of the operation.
- */
-Operand
-TacExpressionGenerator::AddComparisonInstructions(
-    const std::string& resultName,
-    Opcode branchType,
-    Operand branchOperand1,
-    Operand branchOperand2,
-    Literal valueIfBranchTrue
-)
-{
-    /**
-     * Use the following algorithm:
-     *
-     * [resultName] = [valueIfBranchTrue]
-     * [branchType] end [operands in specified order]
-     * [resultName] = ![valueIfBranchTrue]
-     * end:
-     */
-
-    std::string result = m_instructionFactory->GetNewTempVar( resultName );
-    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
-
-    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    m_instructionFactory->AddInstruction( endLabel, branchType, branchOperand1, branchOperand2 );
-
-    bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
-    const uint8_t skippableValue{ !branchTrueBool };
-    m_instructionFactory->AddAssignmentInstruction( result, skippableValue );
-
-    m_instructionFactory->SetNextInstructionLabel( endLabel );
-
-    return result;
-}
-
-/**
  * \brief  Generates the instructions needed for a bool representing the ! operation.
  *
  * \param[in]  op1  The operand being logically inverted.
@@ -588,6 +545,52 @@ TacExpressionGenerator::LogicalNot(
                                       op1,
                                       zeroOp,
                                       valueIfBranchTrue );
+}
+
+
+/**
+ * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
+ *         pattern, this is a shared utility method.
+ *
+ * \param[in]  resultName         Name with which to create the temp var to store the comparison result.
+ * \param[in]  branchType         The opcode describing the desired branching operation.
+ * \param[in]  branchOperand1     The first operand in the branch instruction.
+ * \param[in]  branchOperand2     The second operand in the branch instruction.
+ * \param[in]  valueIfBranchTrue  The value the result will have if branch condition is true.
+ *
+ * \return  Operand describing the result of the operation.
+ */
+Operand
+TacExpressionGenerator::AddComparisonInstructions(
+    const std::string& resultName,
+    Opcode branchType,
+    Operand branchOperand1,
+    Operand branchOperand2,
+    Literal valueIfBranchTrue
+)
+{
+    /**
+     * Use the following algorithm:
+     *
+     * [resultName] = [valueIfBranchTrue]
+     * [branchType] end [operands in specified order]
+     * [resultName] = ![valueIfBranchTrue]
+     * end:
+     */
+
+    std::string result = m_instructionFactory->GetNewTempVar( resultName );
+    m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
+
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, branchType, branchOperand1, branchOperand2 );
+    ThreeAddrInstruction::Ptr branchToEndInstr = m_instructionFactory->GetLatestInstruction();
+
+    bool branchTrueBool{ static_cast< bool >( valueIfBranchTrue ) };
+    const uint8_t skippableValue{ !branchTrueBool };
+    m_instructionFactory->AddAssignmentInstruction( result, skippableValue );
+
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "end" );
+
+    return result;
 }
 
 /**
@@ -665,13 +668,15 @@ TacExpressionGenerator::LogicalOr(
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
-    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op1, zeroOp );
-    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op2, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op1, zeroOp );
+    ThreeAddrInstruction::Ptr branchToEnd1 = m_instructionFactory->GetLatestInstruction();
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op2, zeroOp );
+    ThreeAddrInstruction::Ptr branchToEnd2 = m_instructionFactory->GetLatestInstruction();
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    m_instructionFactory->SetNextInstructionLabel( endLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "end" );
 
     return result;
 }
@@ -750,13 +755,15 @@ TacExpressionGenerator::LogicalAnd(
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
-    std::string endLabel = m_instructionFactory->GetNewLabel( "end" );
-    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op1, zeroOp );
-    m_instructionFactory->AddInstruction( endLabel, Opcode::BRGT, op2, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op1, zeroOp );
+    ThreeAddrInstruction::Ptr branchToEnd1 = m_instructionFactory->GetLatestInstruction();
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op2, zeroOp );
+    ThreeAddrInstruction::Ptr branchToEnd2 = m_instructionFactory->GetLatestInstruction();
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    m_instructionFactory->SetNextInstructionLabel( endLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "end" );
 
     return result;
 }

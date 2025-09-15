@@ -150,14 +150,19 @@ public:
         uint8_t initialValue{ valueIfBranchTrue };
         CheckNewTempVarCalls( resultIdToReturn, initialValue, sequence );
 
-        const std::string endLabel{ "endLabel" };
-        MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
-        ExpectAddInstruction( endLabel, branchOpcode, branchOperand1, branchOperand2, sequence );
+        ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, branchOpcode, branchOperand1, branchOperand2, sequence );
+        // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
+        // Return dummy instruction to verify the later call.
+        ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+        MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
         uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
         ExpectAddAssignmentInstruction( resultIdToReturn, nonBranchValue, sequence );
 
-        MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+        MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+            .once()
+            .in( sequence )
+            .with( dummyInstr, mock::any );
     }
 
 protected:
@@ -374,12 +379,14 @@ BOOST_AUTO_TEST_CASE( Divide_Identifier )
 
     // Main loop:
 
-    // Expect to be branching to the end label. Check this at the end of the program.
-    const std::string endLabel{ "endLabel" };
-    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    // Expect to be branching to the end label, using a placeholder for the initial creation.
     const std::string mainLoopLabel{ "mainLoopLabel" };
     CheckGetAndSetLabelCalls( mainLoopLabel, sequence );
-    ExpectAddInstruction( endLabel, Opcode::BRGT, quotientId, dividendId, sequence );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, quotientId, dividendId, sequence );
+    // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
+    // Return dummy instruction to verify the later call.
+    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
     const uint8_t increment{ 1u };
     ExpectAddInstruction( resultId, Opcode::ADD, resultId, increment, sequence );
@@ -389,7 +396,11 @@ BOOST_AUTO_TEST_CASE( Divide_Identifier )
     // Check is branching to main loop
     ExpectAddNoOperandsInstruction( mainLoopLabel, Opcode::BRU, sequence );
 
-    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+    // Expect call to direct the branching instruction from earlier to the end.
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr, mock::any );
 
 
     Operand result = m_generator->Divide( operand1, operand2 );
@@ -479,12 +490,14 @@ BOOST_AUTO_TEST_CASE( Modulo_Identifier )
 
     // Main loop:
 
-    // Expect to be branching to the end label. Check this at the end of the program.
-    const std::string endLabel{ "endLabel" };
-    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    // Expect to be branching to the end label, using a placeholder for the initial creation.
     const std::string mainLoopLabel{ "mainLoopLabel" };
     CheckGetAndSetLabelCalls( mainLoopLabel, sequence );
-    ExpectAddInstruction( endLabel, Opcode::BRGT, quotientId, dividendId, sequence );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, quotientId, dividendId, sequence );
+    // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
+    // Return dummy instruction to verify the later call.
+    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
     const uint8_t increment{ 1u };
     ExpectAddInstruction( resultId, Opcode::ADD, resultId, increment, sequence );
@@ -494,7 +507,11 @@ BOOST_AUTO_TEST_CASE( Modulo_Identifier )
     // Check is branching to main loop
     ExpectAddNoOperandsInstruction( mainLoopLabel, Opcode::BRU, sequence );
 
-    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+    // Expect call to direct the branching instruction from earlier to the end.
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr, mock::any );
 
 
     Operand result = m_generator->Modulo( operand1, operand2 );
@@ -964,16 +981,25 @@ BOOST_AUTO_TEST_CASE( LogicalOr_TwoIdentifiers )
     uint8_t initialValue{ valueIfBranchTrue };
     CheckNewTempVarCalls( resultId, initialValue, sequence );
 
-    const std::string endLabel{ "endLabel" };
-    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
+    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr1 );
 
-    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
-    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr2 );
 
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
     ExpectAddAssignmentInstruction( resultId, nonBranchValue, sequence );
 
-    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr1, mock::any );
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr2, mock::any );
 
 
     Operand result = m_generator->LogicalOr( operand1, operand2 );
@@ -1069,16 +1095,25 @@ BOOST_AUTO_TEST_CASE( LogicalAnd_TwoIdentifiers )
     uint8_t initialValue{ valueIfBranchTrue };
     CheckNewTempVarCalls( resultId, initialValue, sequence );
 
-    const std::string endLabel{ "endLabel" };
-    MOCK_EXPECT( m_instructionFactoryMock->GetNewLabel ).once().in( sequence ).returns( endLabel );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
+    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr1 );
 
-    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand1, c_zeroOperand, sequence );
-    ExpectAddInstruction( endLabel, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+    ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, operand2, c_zeroOperand, sequence );
+    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr2 );
 
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
     ExpectAddAssignmentInstruction( resultId, nonBranchValue, sequence );
 
-    MOCK_EXPECT( m_instructionFactoryMock->SetNextInstructionLabel ).once().in( sequence ).with( endLabel );
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr1, mock::any );
+    MOCK_EXPECT( m_instructionFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( sequence )
+        .with( dummyInstr2, mock::any );
 
 
     Operand result = m_generator->LogicalAnd( operand1, operand2 );

@@ -407,10 +407,10 @@ IntermediateCode::ConvertIfElse(
     ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, ifSymbolTable );
     Operand conditionOperand = GetOperandFromExpressionInfo( conditionExpressionInfo );
 
-    std::string elseLabel = m_instructionFactory->GetNewLabel( "skipIf" );
 
     // Branch if NOT condition (i.e. if condition == 0)
-    m_instructionFactory->AddSingleOperandInstruction( elseLabel, Opcode::BRZ, conditionOperand );
+    m_instructionFactory->AddSingleOperandInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRZ, conditionOperand );
+    ThreeAddrInstruction::Ptr branchToElse = m_instructionFactory->GetLatestInstruction();
 
     // Add the if block instructions
     AstNode::Ptr ifBlockNode = children[1];
@@ -418,7 +418,7 @@ IntermediateCode::ConvertIfElse(
 
     // Set the else label to be the next instruction - this will either point to the soon-to-be-added else block, or
     // the next instruction that gets added.
-    m_instructionFactory->SetNextInstructionLabel( elseLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToElse, "else" );
 
     // If there is an else, add that block and attach the else label
     if ( 3u == children.size() )
@@ -495,8 +495,8 @@ IntermediateCode::ConvertForLoop(
 
     ConvertAssign( statement1, forSymbolTable );
 
-    std::string conditionLabel = m_instructionFactory->GetNewLabel( "forCondition" );
-    m_instructionFactory->AddNoOperandsInstruction( conditionLabel, Opcode::BRU );
+    m_instructionFactory->AddNoOperandsInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRU );
+    ThreeAddrInstruction::Ptr branchToCondition = m_instructionFactory->GetLatestInstruction();
 
     std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startForLoop" );
     m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
@@ -504,7 +504,7 @@ IntermediateCode::ConvertForLoop(
     ConvertAstToInstructions( blockNode, forSymbolTable );
     ConvertAssign( statement2, forSymbolTable );
 
-    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToCondition, "forCondition" );
 
     ExpressionInfo comparisonInfo = GetExpressionInfo( comparison, forSymbolTable );
     Operand comparisonOperand = GetOperandFromExpressionInfo( comparisonInfo );
@@ -555,15 +555,15 @@ IntermediateCode::ConvertWhileLoop(
 
     // Use this format to avoid 2 branches when repeating the loop
 
-    std::string conditionLabel = m_instructionFactory->GetNewLabel( "whileCondition" );
-    m_instructionFactory->AddNoOperandsInstruction( conditionLabel, Opcode::BRU );
+    m_instructionFactory->AddNoOperandsInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRU );
+    ThreeAddrInstruction::Ptr branchToCondition = m_instructionFactory->GetLatestInstruction();
 
     std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startWhileLoop" );
     m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
 
     ConvertAstToInstructions( blockNode, whileSymbolTable );
 
-    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToCondition, "whileCondition" );
 
     ExpressionInfo expressionInfo = GetExpressionInfo( expressionNode, whileSymbolTable );
     Operand expressionOperand = GetOperandFromExpressionInfo( expressionInfo );
