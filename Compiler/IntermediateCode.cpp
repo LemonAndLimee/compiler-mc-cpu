@@ -217,7 +217,9 @@ IntermediateCode::CalculateUniqueIdentifier(
     {
         LOG_ERROR_AND_THROW( "Could not find entry for '" + currentIdentifier + "'.", std::runtime_error );
     }
-    char* stPointerBytes = static_cast< char* >( static_cast< void* >( entry.get() ) );
+    void* voidEntryPtr = static_cast< void* >( entry.get() );
+    char stPointerBytes[17u]; // Size of pointer + 1 for terminating char
+    sprintf_s( stPointerBytes, "%p", voidEntryPtr );
     std::string outputStr = currentIdentifier + std::string( stPointerBytes );
     return outputStr;
 }
