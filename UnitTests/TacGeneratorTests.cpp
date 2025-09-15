@@ -9,7 +9,7 @@ public:
     TacGeneratorTestsFixture()
     : m_instructionFactoryMock( std::make_shared< TacInstructionFactoryMock >() )
     {
-        m_generator = std::make_shared< TacGenerator >( m_instructionFactoryMock );
+        m_generator = std::make_shared< TacExpressionGenerator >( m_instructionFactoryMock );
     }
 
     enum ExpectLabel
@@ -165,7 +165,7 @@ protected:
     TacInstructionFactoryMock::Ptr m_instructionFactoryMock;
 
     // Unit under test
-    TacGenerator::Ptr m_generator;
+    TacExpressionGenerator::Ptr m_generator;
 
     // Some pre-defined example operands to be used in tests.
     const Operand c_emptyOp{};

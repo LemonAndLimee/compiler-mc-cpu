@@ -14,12 +14,12 @@ using namespace TAC;
  * \brief  Class responsible for translating more complicated operations into sets of three-address code instructions.
  *         E.g. tackles unsupported opcodes such as multiply/divide, as well as handling branching.
  */
-class TacGenerator
+class TacExpressionGenerator
 {
 public:
-    using Ptr = std::shared_ptr< TacGenerator >;
+    using Ptr = std::shared_ptr< TacExpressionGenerator >;
 
-    TacGenerator( TacInstructionFactory::Ptr instrFactory );
+    TacExpressionGenerator( TacInstructionFactory::Ptr instrFactory );
 
     Operand Multiply( Operand op1, Operand op2 );
     Operand Divide( Operand op1, Operand op2 );

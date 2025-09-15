@@ -1,10 +1,12 @@
 #include <iostream>
 #include <string>
+
 #include "Tokeniser.h"
 #include "FileIO.h"
 #include "AstGenerator.h"
 #include "Logger.h"
 #include "SymbolTableGenerator.h"
+#include "IntermediateCode.h"
 
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
@@ -41,6 +43,7 @@ RunCompiler(
     }
     LOG_INFO_AND_COUT( "Successfully converted into tokens!" );
 
+
     AstNode::Ptr abstractSyntaxTree;
     try
     {
@@ -61,6 +64,7 @@ RunCompiler(
         return false;
     }
     LOG_INFO_AND_COUT( "Successfully created abstract syntax tree!" );
+
 
     SymbolTable::Ptr symbolTable;
     try
@@ -84,7 +88,27 @@ RunCompiler(
     }
     LOG_INFO_AND_COUT( "Successfully created symbol table!" );
 
-    // TODO: Generate assembly code here...
+
+    TacInstructionFactory::Ptr tacInstrFactory = std::make_shared< TacInstructionFactory >();
+    TacExpressionGenerator::Ptr tacExprGenerator = std::make_shared< TacExpressionGenerator >( tacInstrFactory );
+    IntermediateCode::UPtr intermediateCodeGenerator
+        = std::make_unique< IntermediateCode >( tacInstrFactory, tacExprGenerator );
+
+    TacInstructionFactory::Instructions tacInstructions;
+    try
+    {
+        LOG_INFO_AND_COUT( "Converting abstract syntax tree to intermediate code..." );
+        intermediateCodeGenerator->GenerateIntermediateCode( abstractSyntaxTree );
+        tacInstructions = tacInstrFactory->GetInstructions();
+    }
+    catch ( std::exception& e )
+    {
+        LOG_ERROR( "Caught exception while generating intermediate code: " + std::string( e.what() ) );
+        return false;
+    }
+    LOG_INFO_AND_COUT( "Successfully generated intermediate code!" );
+
+
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );
     return false;
 }

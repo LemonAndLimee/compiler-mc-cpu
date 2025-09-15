@@ -13,14 +13,14 @@ using namespace TAC;
 /**
  * \brief  Class responsible for traversing an abstract syntax tree and converting it into a list of three-address code
  *         instructions. This is a higher level organisation class, and delegates any complex cases that need new
- *         instructions generating to its TAC generator member.
+ *         instructions generating to its TAC expression generator member.
  */
 class IntermediateCode
 {
 public:
     using UPtr = std::unique_ptr< IntermediateCode >;
 
-    IntermediateCode( TacInstructionFactory::Ptr instrFactory, TacGenerator::Ptr tacGenerator );
+    IntermediateCode( TacInstructionFactory::Ptr instrFactory, TacExpressionGenerator::Ptr tacExprGenerator );
 
     void GenerateIntermediateCode( AstNode::Ptr astNode );
 
@@ -42,6 +42,6 @@ private:
 
     // Factory class for creating instructions.
     TacInstructionFactory::Ptr m_instructionFactory;
-    // Object responsible for converting complex operations and creating new instructions.
-    TacGenerator::Ptr m_tacGenerator;
+    // Object responsible for converting complex expression operations and creating new instructions.
+    TacExpressionGenerator::Ptr m_tacExpressionGenerator;
 };

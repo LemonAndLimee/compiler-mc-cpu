@@ -267,6 +267,7 @@ Tokeniser::GetTokenType(
     }
 
     // If unrecognised, return invalid type
+    // TODO: fix - unrecognised symbol e.g. ^ seems to cause the program to hang.
     LOG_INFO_LOW_LEVEL( "Unrecognised token type for string " + tokenString );
     return TokenType::INVALID_TOKEN;
 }

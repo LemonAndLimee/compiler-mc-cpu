@@ -43,7 +43,7 @@ TacInstructionFactory::GetNewLabel(
     std::string hrfName //= "label"
 )
 {
-    std::string label = hrfName + std::to_string( m_labelsInUse );
+    std::string label = std::to_string( m_labelsInUse ) + hrfName;
     ++m_labelsInUse;
     return label;
 }

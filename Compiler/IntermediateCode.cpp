@@ -6,10 +6,10 @@
 
 IntermediateCode::IntermediateCode(
     TacInstructionFactory::Ptr instrFactory,
-    TacGenerator::Ptr tacGenerator
+    TacExpressionGenerator::Ptr tacExprGenerator
 )
 : m_instructionFactory( instrFactory ),
-  m_tacGenerator( tacGenerator )
+  m_tacExpressionGenerator( tacExprGenerator )
 {
 }
 
@@ -266,7 +266,7 @@ IntermediateCode::GetExpressionInfo(
         if ( 2u == children.size() )
         {
             ExpressionInfo rhsInfo = GetExpressionInfo( children[1], currentSt );
-            Operand rhs = GetOperandFromExpressionInfo( rhsInfo );
+            rhs = GetOperandFromExpressionInfo( rhsInfo );
         }
 
         // For opcodes that directly map e.g. ADD, this is more simple
@@ -284,31 +284,31 @@ IntermediateCode::GetExpressionInfo(
             switch ( nodeLabel )
             {
             case T::MULTIPLY:
-                operand1 = m_tacGenerator->Multiply( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Multiply( lhs, rhs );
                 break;
             case T::DIVIDE:
-                operand1 = m_tacGenerator->Divide( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Divide( lhs, rhs );
                 break;
             case T::MOD:
-                operand1 = m_tacGenerator->Modulo( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Modulo( lhs, rhs );
                 break;
             case T::EQ:
-                operand1 = m_tacGenerator->Equals( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Equals( lhs, rhs );
                 break;
             case T::NEQ:
-                operand1 = m_tacGenerator->NotEquals( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->NotEquals( lhs, rhs );
                 break;
             case T::LEQ:
-                operand1 = m_tacGenerator->Leq( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Leq( lhs, rhs );
                 break;
             case T::GEQ:
-                operand1 = m_tacGenerator->Geq( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->Geq( lhs, rhs );
                 break;
             case T::LT:
-                operand1 = m_tacGenerator->LessThan( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->LessThan( lhs, rhs );
                 break;
             case T::GT:
-                operand1 = m_tacGenerator->GreaterThan( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->GreaterThan( lhs, rhs );
                 break;
             case T::NOT: // Logical NOT
                 if ( !std::holds_alternative< std::monostate >( rhs ) )
@@ -316,13 +316,13 @@ IntermediateCode::GetExpressionInfo(
                     LOG_ERROR_AND_THROW( "Cannot generate intermediate code for NOT operation with 2 operands.",
                                          std::invalid_argument );
                 }
-                operand1 = m_tacGenerator->LogicalNot( lhs );
+                operand1 = m_tacExpressionGenerator->LogicalNot( lhs );
                 break;
             case T::OR:  // Logical OR
-                operand1 = m_tacGenerator->LogicalOr( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->LogicalOr( lhs, rhs );
                 break;
             case T::AND: // Logical AND
-                operand1 = m_tacGenerator->LogicalAnd( lhs, rhs );
+                operand1 = m_tacExpressionGenerator->LogicalAnd( lhs, rhs );
                 break;
             default:
                 LOG_ERROR_AND_THROW( "Invalid or unrecognised node label for expression: "

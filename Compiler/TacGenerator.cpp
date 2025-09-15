@@ -4,7 +4,7 @@
 
 #include "TacGenerator.h"
 
-TacGenerator::TacGenerator( TacInstructionFactory::Ptr instrFactory )
+TacExpressionGenerator::TacExpressionGenerator( TacInstructionFactory::Ptr instrFactory )
 : m_instructionFactory( instrFactory )
 {
 }
@@ -13,13 +13,13 @@ TacGenerator::TacGenerator( TacInstructionFactory::Ptr instrFactory )
  * \brief  Generates the instructions needed to for the multiplication operation. Returns an operand containing the
  *         final result.
  *
- * \param[in]      op1           The first operand to be multiplied.
- * \param[in]      op2           The second operand to be multiplied.
+ * \param[in]  op1  The first operand to be multiplied.
+ * \param[in]  op2  The second operand to be multiplied.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Multiply(
+TacExpressionGenerator::Multiply(
     Operand op1,
     Operand op2
 )
@@ -101,13 +101,13 @@ TacGenerator::Multiply(
  * \brief  Generates the instructions needed for the division operation. Returns an operand containing the
  *         final result.
  *
- * \param[in]      op1           The first operand (the dividend/numerator).
- * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in]  op1  The first operand (the dividend/numerator).
+ * \param[in]  op2  The second operand (the quotient/denominator).
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Divide(
+TacExpressionGenerator::Divide(
     Operand op1,
     Operand op2
 )
@@ -119,13 +119,13 @@ TacGenerator::Divide(
  * \brief  Generates the instructions needed for the modulo operation. Returns an operand containing the
  *         final result.
  *
- * \param[in]      op1           The first operand (the dividend/numerator).
- * \param[in]      op2           The second operand (the quotient/denominator).
+ * \param[in]  op1  The first operand (the dividend/numerator).
+ * \param[in]  op2  The second operand (the quotient/denominator).
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Modulo(
+TacExpressionGenerator::Modulo(
     Operand op1,
     Operand op2
 )
@@ -137,14 +137,14 @@ TacGenerator::Modulo(
  * \brief  Generates the instructions needed for the division/modulo operations, as the process is shared between them.
  *         Returns an operand containing the final result, determined by the specified return type (div or mod).
  *
- * \param[in]      op1           The first operand (the dividend/numerator).
- * \param[in]      op2           The second operand (the quotient/denominator).
- * \param[in]      returnType    Whether to return the result from the division or modulo operation.
+ * \param[in]  op1         The first operand (the dividend/numerator).
+ * \param[in]  op2         The second operand (the quotient/denominator).
+ * \param[in]  returnType  Whether to return the result from the division or modulo operation.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::AddDivModInstructions(
+TacExpressionGenerator::AddDivModInstructions(
     Operand op1,
     Operand op2,
     DivMod returnType
@@ -248,13 +248,13 @@ TacGenerator::AddDivModInstructions(
 /**
  * \brief  Generates the instructions needed for a bool representing the == operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Equals(
+TacExpressionGenerator::Equals(
     Operand op1,
     Operand op2
 )
@@ -291,13 +291,13 @@ TacGenerator::Equals(
 /**
  * \brief  Generates the instructions needed for a bool representing the != operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::NotEquals(
+TacExpressionGenerator::NotEquals(
     Operand op1,
     Operand op2
 )
@@ -334,13 +334,13 @@ TacGenerator::NotEquals(
 /**
  * \brief  Generates the instructions needed for a bool representing the <= operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Leq(
+TacExpressionGenerator::Leq(
     Operand op1,
     Operand op2
 )
@@ -377,13 +377,13 @@ TacGenerator::Leq(
 /**
  * \brief  Generates the instructions needed for a bool representing the >= operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::Geq(
+TacExpressionGenerator::Geq(
     Operand op1,
     Operand op2
 )
@@ -420,13 +420,13 @@ TacGenerator::Geq(
 /**
  * \brief  Generates the instructions needed for a bool representing the < operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::LessThan(
+TacExpressionGenerator::LessThan(
     Operand op1,
     Operand op2
 )
@@ -463,13 +463,13 @@ TacGenerator::LessThan(
 /**
  * \brief  Generates the instructions needed for a bool representing the > operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::GreaterThan(
+TacExpressionGenerator::GreaterThan(
     Operand op1,
     Operand op2
 )
@@ -507,16 +507,16 @@ TacGenerator::GreaterThan(
  * \brief  Generates the instructions needed for a comparison operation. As they all share the same instructions
  *         pattern, this is a shared utility method.
  *
- * \param[in]      resultName          Name with which to create the temp var to store the comparison result.
- * \param[in]      branchType          The opcode describing the desired branching operation.
- * \param[in]      branchOperand1      The first operand in the branch instruction.
- * \param[in]      branchOperand2      The second operand in the branch instruction.
- * \param[in]      valueIfBranchTrue   The value the result will have if branch condition is true.
+ * \param[in]  resultName         Name with which to create the temp var to store the comparison result.
+ * \param[in]  branchType         The opcode describing the desired branching operation.
+ * \param[in]  branchOperand1     The first operand in the branch instruction.
+ * \param[in]  branchOperand2     The second operand in the branch instruction.
+ * \param[in]  valueIfBranchTrue  The value the result will have if branch condition is true.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::AddComparisonInstructions(
+TacExpressionGenerator::AddComparisonInstructions(
     const std::string& resultName,
     Opcode branchType,
     Operand branchOperand1,
@@ -551,12 +551,12 @@ TacGenerator::AddComparisonInstructions(
 /**
  * \brief  Generates the instructions needed for a bool representing the ! operation.
  *
- * \param[in]      op1           The operand being logically inverted.
+ * \param[in]  op1  The operand being logically inverted.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::LogicalNot(
+TacExpressionGenerator::LogicalNot(
     Operand op1
 )
 {
@@ -593,13 +593,13 @@ TacGenerator::LogicalNot(
 /**
  * \brief  Generates the instructions needed for a bool representing the logical OR operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::LogicalOr(
+TacExpressionGenerator::LogicalOr(
     Operand op1,
     Operand op2
 )
@@ -679,13 +679,13 @@ TacGenerator::LogicalOr(
 /**
  * \brief  Generates the instructions needed for a bool representing the logical AND operation.
  *
- * \param[in]      op1           The first operand.
- * \param[in]      op2           The second operand.
+ * \param[in]  op1  The first operand.
+ * \param[in]  op2  The second operand.
  *
  * \return  Operand describing the result of the operation.
  */
 Operand
-TacGenerator::LogicalAnd(
+TacExpressionGenerator::LogicalAnd(
     Operand op1,
     Operand op2
 )

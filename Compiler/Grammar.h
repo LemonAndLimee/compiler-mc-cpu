@@ -198,6 +198,8 @@ namespace GrammarRules
             }
         },
         {
+            // TODO: fix scopes so that the if and else blocks are siblings, not joined - currently they share the
+            // same scope so a var cannot be redeclared.
             If_else,
             {
                 { T::IF, T::PAREN_OPEN, Logical, T::PAREN_CLOSE, Scoped_block, Else },
