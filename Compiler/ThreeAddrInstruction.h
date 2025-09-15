@@ -28,11 +28,8 @@ namespace TAC
         OR,   // Bitwise or
         LS,   // Left shift
         RS,   // Right shift
-        BRU,  // Unconditional branch
         BRE,  // Branch if equal
         BRLT, // Branch if less than
-        BRGT, // Branch if greater than
-        BRZ   // Branch if zero
     };
 
     // Map of grammar terminal symbols to their corresponding opcodes (if they map directly).

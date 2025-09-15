@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_NonBranchInstr )
 BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_CreatesNewEndLabel )
 {
     const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
-    constexpr Opcode opcode{ BRU };
+    constexpr Opcode opcode{ BRE };
     const Operand operand{ 5u }; // Operands don't matter for this test
 
     ThreeAddrInstruction::Ptr instr
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_CreatesNewEndLabel )
 BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_ExistingEndLabel )
 {
     const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
-    constexpr Opcode opcode{ BRU };
+    constexpr Opcode opcode{ BRE };
     const Operand operand{ 5u }; // Operands don't matter for this test
 
     ThreeAddrInstruction::Ptr instr

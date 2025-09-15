@@ -163,15 +163,8 @@ TacInstructionFactory::SetInstructionBranchToNextLabel(
     {
         LOG_ERROR_AND_THROW( "Passed a nullptr instruction.", std::invalid_argument );
     }
-    switch ( instruction->m_opcode )
+    if ( Opcode::BRE != instruction->m_opcode && Opcode::BRLT != instruction->m_opcode )
     {
-    case BRU:
-    case BRZ:
-    case BRE:
-    case BRLT:
-    case BRGT:
-        break;
-    default:
         LOG_ERROR_AND_THROW( "This method can only be called on a branch instruction. Opcode: "
                              + std::to_string( instruction->m_opcode ), std::invalid_argument );
     }

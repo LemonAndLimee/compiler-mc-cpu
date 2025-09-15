@@ -411,7 +411,7 @@ IntermediateCode::ConvertIfElse(
 
 
     // Branch if NOT condition (i.e. if condition == 0)
-    m_instructionFactory->AddSingleOperandInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRZ, conditionOperand );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, conditionOperand, 0u );
     ThreeAddrInstruction::Ptr branchToElse = m_instructionFactory->GetLatestInstruction();
 
     // Add the if block instructions
@@ -487,33 +487,32 @@ IntermediateCode::ConvertForLoop(
     }
 
     // The TAC code should look like this:
-    // Execute statement 1.
-    // Jump to 'loop label'
-    // start label: Execute block.
-    // Execute statement 2.
-    // loop label: If comparison true, jump to start label
 
-    // Use this format to avoid 2 branches when repeating the loop
+    // execute statement 1
+    // condition: if comparison == 0 aka is false, jump to end
+    // execute block
+    // execute statement 2
+    // jump to condition
+    // end:
 
     ConvertAssign( statement1, forSymbolTable );
 
-    m_instructionFactory->AddNoOperandsInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRU );
-    ThreeAddrInstruction::Ptr branchToCondition = m_instructionFactory->GetLatestInstruction();
-
-    std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startForLoop" );
-    m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
+    std::string conditionLabel = m_instructionFactory->GetNewLabel( "forCondition" );
+    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+    // Evaluate comparison expression
+    ExpressionInfo comparisonInfo = GetExpressionInfo( comparison, forSymbolTable );
+    Operand comparisonOperand = GetOperandFromExpressionInfo( comparisonInfo );
+    // If comparison == 0 aka comparison is false, branch to end
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, comparisonOperand, 0u );
+    ThreeAddrInstruction::Ptr branchToEnd = m_instructionFactory->GetLatestInstruction();
 
     ConvertAstToInstructions( blockNode, forSymbolTable );
     ConvertAssign( statement2, forSymbolTable );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToCondition, "forCondition" );
+    // Unconditional branch using an operand we have access to, i.e. if x == x
+    m_instructionFactory->AddInstruction( conditionLabel, Opcode::BRE, comparisonOperand, comparisonOperand );
 
-    ExpressionInfo comparisonInfo = GetExpressionInfo( comparison, forSymbolTable );
-    Operand comparisonOperand = GetOperandFromExpressionInfo( comparisonInfo );
-    // If comparison > 0 aka comparison is true, branch to start.
-    constexpr uint8_t comparisonValue{ 0u };
-    m_instructionFactory->AddInstruction( startLoopLabel, Opcode::BRGT, comparisonOperand, comparisonValue );
-
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd, "end" );
 }
 
 /**
@@ -551,25 +550,25 @@ IntermediateCode::ConvertWhileLoop(
     }
 
     // The TAC code should look like this:
-    // branch to while label
-    // start label: execute block
-    // while label: if expression is true, branch to start label
 
-    // Use this format to avoid 2 branches when repeating the loop
+    // condition: if expression is false (i.e. == 0), branch to end
+    // execute block
+    // jump to condition
+    // end:
 
-    m_instructionFactory->AddNoOperandsInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRU );
-    ThreeAddrInstruction::Ptr branchToCondition = m_instructionFactory->GetLatestInstruction();
-
-    std::string startLoopLabel = m_instructionFactory->GetNewLabel( "startWhileLoop" );
-    m_instructionFactory->SetNextInstructionLabel( startLoopLabel );
+    std::string conditionLabel = m_instructionFactory->GetNewLabel( "whileCondition" );
+    m_instructionFactory->SetNextInstructionLabel( conditionLabel );
+    // Evaluate expression
+    ExpressionInfo expressionInfo = GetExpressionInfo( expressionNode, whileSymbolTable );
+    Operand expressionOperand = GetOperandFromExpressionInfo( expressionInfo );
+    // If expression == 0 aka is false, branch to end
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, expressionOperand, 0u );
+    ThreeAddrInstruction::Ptr branchToEnd = m_instructionFactory->GetLatestInstruction();
 
     ConvertAstToInstructions( blockNode, whileSymbolTable );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToCondition, "whileCondition" );
+    // Unconditional branch using an operand we have access to, i.e. if x == x
+    m_instructionFactory->AddInstruction( conditionLabel, Opcode::BRE, expressionOperand, expressionOperand );
 
-    ExpressionInfo expressionInfo = GetExpressionInfo( expressionNode, whileSymbolTable );
-    Operand expressionOperand = GetOperandFromExpressionInfo( expressionInfo );
-    // If expression > 0 aka expression is true, branch to start.
-    constexpr uint8_t comparisonValue{ 0u };
-    m_instructionFactory->AddInstruction( startLoopLabel, Opcode::BRGT, expressionOperand, comparisonValue );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd, "end" );
 }

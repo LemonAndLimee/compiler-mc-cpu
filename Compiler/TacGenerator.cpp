@@ -44,12 +44,12 @@ TacExpressionGenerator::Multiply(
      * bitCounter = 8
      *
      * loop: lsb = multiplier && 0xFE
-     * BRZ shift lsb
+     * BRE shift lsb 0
      * result = result + multiplicand
      * shift: multiplicand = << multiplicand
      * multiplier = >> multiplier
      * bitCounter = bitCounter - 1
-     * BRGT loop bitCounter 0
+     * BRLT loop 0 bitCounter
      *
      * (return result)
      */
@@ -79,7 +79,7 @@ TacExpressionGenerator::Multiply(
     m_instructionFactory->AddInstruction( lsb, Opcode::AND, multiplier, lsbBitmask );
 
     std::string shiftLabel = m_instructionFactory->GetNewLabel( "shift" );
-    m_instructionFactory->AddSingleOperandInstruction( shiftLabel, Opcode::BRZ, lsb );
+    m_instructionFactory->AddInstruction( shiftLabel, Opcode::BRE, lsb, 0u );
 
     m_instructionFactory->AddInstruction( result, Opcode::ADD, result, multiplicand );
 
@@ -91,8 +91,7 @@ TacExpressionGenerator::Multiply(
     constexpr uint8_t decrement{ 1u };
     m_instructionFactory->AddInstruction( bitCounter, Opcode::SUB, bitCounter, decrement );
 
-    constexpr uint8_t brgtValue{ 0u };
-    m_instructionFactory->AddInstruction( mainLoopLabel, Opcode::BRGT, bitCounter, brgtValue );
+    m_instructionFactory->AddInstruction( mainLoopLabel, Opcode::BRLT, 0u, bitCounter );
 
     return result;
 }
@@ -195,10 +194,10 @@ TacExpressionGenerator::AddDivModInstructions(
      * dividend = op1
      * quotient = op2
      *
-     * loop: BRGT end quotient dividend
+     * loop: BRLT end dividend quotient
      * result = result + 1
      * dividend = dividend - quotient
-     * BRU loop
+     * jump to loop
      * end:
      *
      * (div = result, mod = dividend)
@@ -221,7 +220,7 @@ TacExpressionGenerator::AddDivModInstructions(
     std::string mainLoopLabel = m_instructionFactory->GetNewLabel( "divLoop" );
     m_instructionFactory->SetNextInstructionLabel( mainLoopLabel );
 
-    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, quotient, dividend );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, dividend, quotient );
     // Retrieve pointer to this instruction to replace the target label at the end.
     ThreeAddrInstruction::Ptr branchToEndInstr = m_instructionFactory->GetLatestInstruction();
 
@@ -229,7 +228,8 @@ TacExpressionGenerator::AddDivModInstructions(
     m_instructionFactory->AddInstruction( result, Opcode::ADD, result, increment );
     m_instructionFactory->AddInstruction( dividend, Opcode::SUB, dividend, quotient );
 
-    m_instructionFactory->AddNoOperandsInstruction( mainLoopLabel, Opcode::BRU );
+    // Unconditional branch
+    m_instructionFactory->AddInstruction( mainLoopLabel, Opcode::BRE, result, result );
 
     m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "end" );
 
@@ -369,10 +369,11 @@ TacExpressionGenerator::Leq(
 
     const std::string resultName = "isLeq";
     const Literal valueIfBranchTrue{ 0u }; // False if op1 > op2, as this is !(<=)
+    // This comes out to equivalent to op2 < op1
     return AddComparisonInstructions( resultName,
-                                      Opcode::BRGT,
-                                      op1,
+                                      Opcode::BRLT,
                                       op2,
+                                      op1,
                                       valueIfBranchTrue );
 }
 
@@ -498,10 +499,11 @@ TacExpressionGenerator::GreaterThan(
 
     const std::string resultName = "isGt";
     const Literal valueIfBranchTrue{ 1u }; // True if the greater than branch is successful.
+    // True if op1 > op2, aka if op2 < op1
     return AddComparisonInstructions( resultName,
-                                      Opcode::BRGT,
-                                      op1,
+                                      Opcode::BRLT,
                                       op2,
+                                      op1,
                                       valueIfBranchTrue );
 }
 
@@ -540,10 +542,11 @@ TacExpressionGenerator::LogicalNot(
     const std::string resultName = "not";
     const Literal valueIfBranchTrue{ 1u }; // True if the operand is >0, therefore !op = 1, as the branch succeeded.
     const Operand zeroOp{ 0u };
+    // op > 0 is the same as 0 < op
     return AddComparisonInstructions( resultName,
-                                      Opcode::BRGT,
-                                      op1,
+                                      Opcode::BRLT,
                                       zeroOp,
+                                      op1,
                                       valueIfBranchTrue );
 }
 
@@ -654,8 +657,8 @@ TacExpressionGenerator::LogicalOr(
      *
      * or = 1
      * // branch to the end (i.e. keeping the 'true' result) if either op1 or op2 is true
-     * BRGT end op1 0
-     * BRGT end op2 0
+     * BRLT end 0 op1
+     * BRLT end 0 op2
      * or = 0
      * end:
      */
@@ -668,9 +671,9 @@ TacExpressionGenerator::LogicalOr(
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
-    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op1, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, zeroOp, op1 );
     ThreeAddrInstruction::Ptr branchToEnd1 = m_instructionFactory->GetLatestInstruction();
-    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op2, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, zeroOp, op2 );
     ThreeAddrInstruction::Ptr branchToEnd2 = m_instructionFactory->GetLatestInstruction();
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
@@ -741,8 +744,8 @@ TacExpressionGenerator::LogicalAnd(
      * and = 0
      * // branch to the end (i.e. keeping the 'false' result) if either op1 or op2 is true
      * // therefore, the 'true' result is only reached if both ops are true
-     * BRGT end op1 0
-     * BRGT end op2 0
+     * BRLT end 0 op1
+     * BRLT end 0 op2
      * and = 1
      * end:
      */
@@ -755,9 +758,9 @@ TacExpressionGenerator::LogicalAnd(
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchTrue );
 
     const Operand zeroOp{ 0u };
-    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op1, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, zeroOp, op1 );
     ThreeAddrInstruction::Ptr branchToEnd1 = m_instructionFactory->GetLatestInstruction();
-    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRGT, op2, zeroOp );
+    m_instructionFactory->AddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, zeroOp, op2 );
     ThreeAddrInstruction::Ptr branchToEnd2 = m_instructionFactory->GetLatestInstruction();
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
