@@ -39,9 +39,6 @@
     <ClCompile Include="TacGeneratorTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ThreeAddrInstructionTests.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TacInstructionFactoryTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -74,22 +74,100 @@ BOOST_AUTO_TEST_SUITE( AddInstructionTests )
  * Tests that the method for adding an instruction successfully creates one with the given values, and adds it to the
  * instructions storage.
  */
-BOOST_AUTO_TEST_CASE( AddInstruction )
+BOOST_AUTO_TEST_CASE( AddInstruction_Identifiers )
 {
     BOOST_CHECK_EQUAL( 0u, m_instructionFactory->m_instructions.size() );
 
     const std::string target{ "target" };
     constexpr Opcode opcode{ ADD };
-    const Operand operand1{ "op1" };
-    const Operand operand2{ 5u };
+    const std::string op1String{ "op1" };
+    const Operand operand1{ op1String };
+    const std::string op2String{ "op2" };
+    const Operand operand2{ op2String };
+
     m_instructionFactory->AddInstruction( target, opcode, operand1, operand2 );
 
     BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
     ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
+
     BOOST_CHECK_EQUAL( target, instruction->m_target );
-    BOOST_CHECK_EQUAL( opcode, instruction->m_opcode );
-    BOOST_CHECK( operand1 == instruction->m_operand1 );
-    BOOST_CHECK( operand2 == instruction->m_operand2 );
+
+    BOOST_REQUIRE( instruction->IsOperation() );
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    BOOST_CHECK_EQUAL( opcode, rhsOperation->opcode );
+    BOOST_CHECK_EQUAL( op1String, rhsOperation->operand1 );
+    BOOST_CHECK_EQUAL( op2String, rhsOperation->operand2 );
+
+    BOOST_CHECK_EQUAL( "", instruction->m_label );
+}
+
+/**
+ * Tests that the method for adding an instruction will add a prerequisite temporary var assignment if one of the
+ * operands is a non-zero literal.
+ */
+BOOST_AUTO_TEST_CASE( AddInstruction_NonZeroLiteralOperand )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructionFactory->m_instructions.size() );
+
+    const std::string target{ "target" };
+    constexpr Opcode opcode{ ADD };
+    constexpr Literal literalValue{ 5u };
+    const Operand operand1{ literalValue };
+    const std::string op2String{ "op2" };
+    const Operand operand2{ op2String };
+
+    m_instructionFactory->AddInstruction( target, opcode, operand1, operand2 );
+
+    // Expect 2 instructions to have been added - one assignment before the actual instruction.
+    BOOST_REQUIRE_EQUAL( 2u, m_instructionFactory->m_instructions.size() );
+
+    ThreeAddrInstruction::Ptr assignmentInstr = m_instructionFactory->m_instructions[0];
+    std::string tempVar = assignmentInstr->m_target;
+    BOOST_REQUIRE( !assignmentInstr->IsOperation() );
+    Operand rhsOperand = std::get< Operand >( assignmentInstr->m_rhs );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( rhsOperand ) );
+    BOOST_CHECK_EQUAL( literalValue, std::get< Literal >( rhsOperand ) );
+
+
+    ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[1];
+    BOOST_CHECK_EQUAL( target, instruction->m_target );
+
+    BOOST_REQUIRE( instruction->IsOperation() );
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    BOOST_CHECK_EQUAL( opcode, rhsOperation->opcode );
+    BOOST_CHECK_EQUAL( tempVar, rhsOperation->operand1 );
+    BOOST_CHECK_EQUAL( op2String, rhsOperation->operand2 );
+
+    BOOST_CHECK_EQUAL( "", instruction->m_label );
+}
+
+/**
+ * Tests that the method for adding an instruction will swap any zero literal operands for an empty string when
+ * creating the instruction.
+ */
+BOOST_AUTO_TEST_CASE( AddInstruction_ZeroLiteralOperand )
+{
+    BOOST_CHECK_EQUAL( 0u, m_instructionFactory->m_instructions.size() );
+
+    const std::string target{ "target" };
+    constexpr Opcode opcode{ ADD };
+    const std::string op1String{ "op1" };
+    const Operand operand1{ op1String };
+    const Operand operand2{ 0u };
+
+    m_instructionFactory->AddInstruction( target, opcode, operand1, operand2 );
+
+    BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
+    ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
+
+    BOOST_CHECK_EQUAL( target, instruction->m_target );
+
+    BOOST_REQUIRE( instruction->IsOperation() );
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    BOOST_CHECK_EQUAL( opcode, rhsOperation->opcode );
+    BOOST_CHECK_EQUAL( op1String, rhsOperation->operand1 );
+    BOOST_CHECK( ThreeAddrInstruction::IsOperandEmpty( rhsOperation->operand2 ) );
+
     BOOST_CHECK_EQUAL( "", instruction->m_label );
 }
 
@@ -106,16 +184,24 @@ BOOST_AUTO_TEST_CASE( AddInstruction_PreSetLabel )
 
     const std::string target{ "target" };
     constexpr Opcode opcode{ ADD };
-    const Operand operand1{ "op1" };
-    const Operand operand2{ 5u };
+    const std::string op1String{ "op1" };
+    const Operand operand1{ op1String };
+    const std::string op2String{ "op2" };
+    const Operand operand2{ op2String };
+
     m_instructionFactory->AddInstruction( target, opcode, operand1, operand2 );
 
     BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
     ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
+
     BOOST_CHECK_EQUAL( target, instruction->m_target );
-    BOOST_CHECK_EQUAL( opcode, instruction->m_opcode );
-    BOOST_CHECK( operand1 == instruction->m_operand1 );
-    BOOST_CHECK( operand2 == instruction->m_operand2 );
+
+    BOOST_REQUIRE( instruction->IsOperation() );
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    BOOST_CHECK_EQUAL( opcode, rhsOperation->opcode );
+    BOOST_CHECK_EQUAL( op1String, rhsOperation->operand1 );
+    BOOST_CHECK_EQUAL( op2String, rhsOperation->operand2 );
+
     BOOST_CHECK_EQUAL( label, instruction->m_label );
 }
 
@@ -129,36 +215,20 @@ BOOST_AUTO_TEST_CASE( AddSingleOperandInstruction )
 
     const std::string target{ "target" };
     constexpr Opcode opcode{ ADD };
-    const Operand operand{ "op1" };
+    const std::string operandString{ "op1" };
+    const Operand operand{ operandString };
     m_instructionFactory->AddSingleOperandInstruction( target, opcode, operand );
 
     BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
     ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
     BOOST_CHECK_EQUAL( target, instruction->m_target );
-    BOOST_CHECK_EQUAL( opcode, instruction->m_opcode );
-    BOOST_CHECK( operand == instruction->m_operand1 );
-    BOOST_CHECK( std::holds_alternative< std::monostate >( instruction->m_operand2 ) );
-    BOOST_CHECK_EQUAL( "", instruction->m_label );
-}
 
-/**
- * Tests that the method for adding an instruction with no operands successfully creates one with the given values, and
- * adds it to the instructions storage.
- */
-BOOST_AUTO_TEST_CASE( AddNoOperandsInstruction )
-{
-    BOOST_CHECK_EQUAL( 0u, m_instructionFactory->m_instructions.size() );
+    BOOST_CHECK( instruction->IsOperation() );
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    BOOST_CHECK_EQUAL( opcode, rhsOperation->opcode );
+    BOOST_CHECK_EQUAL( operandString, rhsOperation->operand1 );
+    BOOST_CHECK( ThreeAddrInstruction::IsOperandEmpty( rhsOperation->operand2 ) );
 
-    const std::string target{ "target" };
-    constexpr Opcode opcode{ ADD };
-    m_instructionFactory->AddNoOperandsInstruction( target, opcode );
-
-    BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
-    ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
-    BOOST_CHECK_EQUAL( target, instruction->m_target );
-    BOOST_CHECK_EQUAL( opcode, instruction->m_opcode );
-    BOOST_CHECK( std::holds_alternative< std::monostate >( instruction->m_operand1 ) );
-    BOOST_CHECK( std::holds_alternative< std::monostate >( instruction->m_operand2 ) );
     BOOST_CHECK_EQUAL( "", instruction->m_label );
 }
 
@@ -177,9 +247,11 @@ BOOST_AUTO_TEST_CASE( AddAssignmentInstruction )
     BOOST_REQUIRE_EQUAL( 1u, m_instructionFactory->m_instructions.size() );
     ThreeAddrInstruction::Ptr instruction = m_instructionFactory->m_instructions[0];
     BOOST_CHECK_EQUAL( target, instruction->m_target );
-    BOOST_CHECK_EQUAL( Opcode::UNUSED, instruction->m_opcode );
-    BOOST_CHECK( operand == instruction->m_operand1 );
-    BOOST_CHECK( std::holds_alternative< std::monostate >( instruction->m_operand2 ) );
+
+    BOOST_CHECK( !instruction->IsOperation() );
+    Operand rhs = std::get< Operand >( instruction->m_rhs );
+    BOOST_CHECK( operand == rhs );
+
     BOOST_CHECK_EQUAL( "", instruction->m_label );
 }
 
@@ -200,7 +272,7 @@ BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_NonBranchInstr )
 {
     const std::string target{ "target" };
     constexpr Opcode opcode{ LS }; // Non-branch opcode
-    const Operand operand{ 5u };
+    const std::string operand{ "value" };
 
     ThreeAddrInstruction::Ptr instr = std::make_shared< ThreeAddrInstruction >( target, opcode, operand, operand );
     BOOST_CHECK_THROW( m_instructionFactory->SetInstructionBranchToNextLabel( instr, "" ), std::invalid_argument );
@@ -214,7 +286,7 @@ BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_CreatesNewEndLabel )
 {
     const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
     constexpr Opcode opcode{ BRE };
-    const Operand operand{ 5u }; // Operands don't matter for this test
+    const std::string operand{ "value" }; // Operands don't matter for this test
 
     ThreeAddrInstruction::Ptr instr
         = std::make_shared< ThreeAddrInstruction >( placeholderTarget, opcode, operand, operand );
@@ -236,7 +308,7 @@ BOOST_AUTO_TEST_CASE( SetInstructionBranchToEndLabel_ExistingEndLabel )
 {
     const std::string placeholderTarget{ TacInstructionFactory::PLACEHOLDER };
     constexpr Opcode opcode{ BRE };
-    const Operand operand{ 5u }; // Operands don't matter for this test
+    const std::string operand{ "value" }; // Operands don't matter for this test
 
     ThreeAddrInstruction::Ptr instr
         = std::make_shared< ThreeAddrInstruction >( placeholderTarget, opcode, operand, operand );
@@ -299,9 +371,11 @@ BOOST_AUTO_TEST_CASE( GetInstructions_AddsInstrOnEnd )
     ThreeAddrInstruction::Ptr fillerInstr = instructions[1];
     // Expect assignment to 0, with the correct label.
     BOOST_CHECK_EQUAL( label, fillerInstr->m_label );
-    BOOST_CHECK_EQUAL( Opcode::UNUSED, fillerInstr->m_opcode );
-    const Operand expectedOp{ 0u };
-    BOOST_CHECK( expectedOp == fillerInstr->m_operand1 );
+    BOOST_REQUIRE( !fillerInstr->IsOperation() );
+    Operand rhsOperand = std::get< Operand >( fillerInstr->m_rhs );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( rhsOperand ) );
+    const Literal expectedValue{ 0u };
+    BOOST_CHECK_EQUAL( expectedValue, std::get< Literal >( rhsOperand ) );
 }
 
 BOOST_AUTO_TEST_SUITE_END() // TacInstructionFactoryTests

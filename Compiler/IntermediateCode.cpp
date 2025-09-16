@@ -240,7 +240,7 @@ IntermediateCode::GetExpressionInfo(
     SymbolTable::Ptr currentSt
 )
 {
-    Opcode opcode{ Opcode::UNUSED };
+    Opcode opcode{ Opcode::INVALID };
     Operand operand1{};
     Operand operand2{};
 
@@ -313,7 +313,7 @@ IntermediateCode::GetExpressionInfo(
                 operand1 = m_tacExpressionGenerator->GreaterThan( lhs, rhs );
                 break;
             case T::NOT: // Logical NOT
-                if ( !std::holds_alternative< std::monostate >( rhs ) )
+                if ( !ThreeAddrInstruction::IsOperandEmpty( rhs ) )
                 {
                     LOG_ERROR_AND_THROW( "Cannot generate intermediate code for NOT operation with 2 operands.",
                                          std::invalid_argument );
@@ -355,9 +355,9 @@ IntermediateCode::GetOperandFromExpressionInfo(
     Operand operand2 = std::get< 2 >( info );
 
     // If opcode isn't being used, it represents only a single value and should therefore be storing 1 operand only.
-    if ( Opcode::UNUSED == opcode )
+    if ( Opcode::INVALID == opcode )
     {
-        if ( std::holds_alternative< std::monostate >( operand1 ) || !std::holds_alternative< std::monostate >( operand2 ) )
+        if ( ThreeAddrInstruction::IsOperandEmpty( operand1 ) || !ThreeAddrInstruction::IsOperandEmpty( operand2 ) )
         {
             LOG_ERROR_AND_THROW( "Expression info with no opcode should hold one valid operand.", std::invalid_argument );
         }

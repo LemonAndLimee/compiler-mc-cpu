@@ -16,7 +16,6 @@ MOCK_BASE_CLASS( TacInstructionFactoryMock, TacInstructionFactory )
 
     MOCK_METHOD( AddInstruction, 4, void( std::string, Opcode, Operand, Operand ) );
     MOCK_METHOD( AddSingleOperandInstruction, 3, void( std::string, Opcode, Operand ) );
-    MOCK_METHOD( AddNoOperandsInstruction, 2, void( std::string, Opcode ) );
     MOCK_METHOD( AddAssignmentInstruction, 2, void( std::string, Operand ) );
 
     MOCK_METHOD( SetInstructionBranchToNextLabel, 2, void( ThreeAddrInstruction::Ptr, std::string ) );

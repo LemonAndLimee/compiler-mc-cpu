@@ -24,12 +24,12 @@ TacExpressionGenerator::Multiply(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for multiplication must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) * std::get< Literal >( op2 );
         return literalResult;
@@ -149,13 +149,13 @@ TacExpressionGenerator::AddDivModInstructions(
     DivMod returnType
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         std::string operation = ( DivMod::MOD == returnType ) ? "modulo" : "division";
         LOG_ERROR_AND_THROW( "Operands for " + operation + " must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op2 ) )
     {
         Literal value2{ std::get< Literal >( op2 ) };
         if ( 0u == value2 )
@@ -244,7 +244,7 @@ TacExpressionGenerator::AddDivModInstructions(
     LOG_ERROR_AND_THROW( "Unknown return specifier: can only be DIV or MOD. Value = " + std::to_string( returnType ),
                          std::invalid_argument );
 
-    return std::monostate{}; // This is never reached, but used to satisfy compiler warning.
+    return ""; // This is never reached, but used to satisfy compiler warning.
 }
 
 /**
@@ -261,12 +261,12 @@ TacExpressionGenerator::Equals(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for == must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) == std::get< Literal >( op2 );
         return literalResult;
@@ -304,12 +304,12 @@ TacExpressionGenerator::NotEquals(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for != must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) != std::get< Literal >( op2 );
         return literalResult;
@@ -347,12 +347,12 @@ TacExpressionGenerator::Leq(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for <= must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) <= std::get< Literal >( op2 );
         return literalResult;
@@ -391,12 +391,12 @@ TacExpressionGenerator::Geq(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for >= must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) >= std::get< Literal >( op2 );
         return literalResult;
@@ -434,12 +434,12 @@ TacExpressionGenerator::LessThan(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for < must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) < std::get< Literal >( op2 );
         return literalResult;
@@ -477,12 +477,12 @@ TacExpressionGenerator::GreaterThan(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for > must both contain a value.", std::invalid_argument );
     }
 
-    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op1 ) && std::holds_alternative< Literal >( op2 ) )
     {
         Operand literalResult = std::get< Literal >( op1 ) > std::get< Literal >( op2 );
         return literalResult;
@@ -519,7 +519,7 @@ TacExpressionGenerator::LogicalNot(
     Operand op1
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) )
     {
         LOG_ERROR_AND_THROW( "Operand for ! must contain a value.", std::invalid_argument );
     }
@@ -610,7 +610,7 @@ TacExpressionGenerator::LogicalOr(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for || must both contain a value.", std::invalid_argument );
     }
@@ -626,7 +626,7 @@ TacExpressionGenerator::LogicalOr(
         isOp1ZeroLiteral = true;
     }
 
-    if ( std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op2 ) )
     {
         if ( std::get< Literal >( op2 ) > 0 )
         {
@@ -698,7 +698,7 @@ TacExpressionGenerator::LogicalAnd(
     Operand op2
 )
 {
-    if ( std::holds_alternative< std::monostate >( op1 ) || std::holds_alternative< std::monostate >( op2 ) )
+    if ( ThreeAddrInstruction::IsOperandEmpty( op1 ) || ThreeAddrInstruction::IsOperandEmpty( op2 ) )
     {
         LOG_ERROR_AND_THROW( "Operands for && must both contain a value.", std::invalid_argument );
     }
@@ -713,7 +713,7 @@ TacExpressionGenerator::LogicalAnd(
         }
         op1IsTrueLiteral = true;
     }
-    if ( std::holds_alternative< uint8_t >( op2 ) )
+    if ( std::holds_alternative< Literal >( op2 ) )
     {
         if ( std::get< Literal >( op2 ) <= 0 )
         {

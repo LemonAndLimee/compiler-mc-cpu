@@ -8,6 +8,7 @@
 #include <variant>
 #include <unordered_map>
 #include <memory>
+#include <stdexcept>
 
 #include "Grammar.h"
 
@@ -21,7 +22,7 @@ namespace TAC
     // concept of load-store, as this is a level higher.
     enum Opcode
     {
-        UNUSED,
+        INVALID,
         ADD,
         SUB,
         AND,  // Bitwise and
@@ -42,8 +43,30 @@ namespace TAC
         { GrammarSymbols::T::RSHIFT, Opcode::RS }
     };
 
-    // Operand can either be a string identifier/label, or a numeric value (or can be empty i.e. monostate)
-    using Operand = std::variant< std::monostate, std::string, Literal >;
+    // Operand can either be a string identifier (empty string to represent no value), or a numeric value.
+    using Operand = std::variant< std::string, Literal >;
+
+    /**
+     * \brief  Represents a RHS of an instruction in the case that an operation is being performed. This consists of
+     *         an opcode and 2 identifier strings (can be left empty to represent no value).
+     */
+    struct Operation
+    {
+        using Ptr = std::shared_ptr< Operation >;
+
+        Operation( Opcode operationCode, std::string op1, std::string op2 )
+        : opcode( operationCode ), operand1( op1 ), operand2( op2 )
+        {
+        }
+
+        Opcode opcode;
+        std::string operand1;
+        std::string operand2;
+    };
+
+    // The right hand side of an instruction can either be a single operand (identifier or literal), or an opcode with
+    // two operands (i.e., an operation that is being performed).
+    using RHS = std::variant< Operand, Operation::Ptr >;
 
     /**
      * \brief  Represents an instruction in three-address code. Stores the result of an operation, the operation type,
@@ -58,37 +81,65 @@ namespace TAC
         ThreeAddrInstruction(
             std::string target,
             Opcode opcode,
-            Operand op1,
-            Operand op2,
+            std::string operand1,
+            std::string operand2,
             std::string label = "" // Only used if instruction has label attached
         )
         : m_target( target ),
-          m_opcode( opcode ),
-          m_operand1( op1 ),
-          m_operand2( op2 ),
           m_label( label )
         {
+            m_rhs = std::make_shared< Operation >( opcode, operand1, operand2 );
         }
 
-        bool
-        operator==( const ThreeAddrInstruction& comparisonInstr ) const
+        // Overloaded constructor for assignment instructions with a single RHS value.
+        ThreeAddrInstruction(
+            std::string target,
+            Operand value,
+            std::string label = "" // Only used if instruction has label attached
+        )
+        : m_target( target ),
+          m_label( label )
         {
-            return comparisonInstr.m_target == m_target
-                   && comparisonInstr.m_opcode == m_opcode
-                   // std::variant equals operators will compare values if they are at the same index.
-                   && comparisonInstr.m_operand1 == m_operand1
-                   && comparisonInstr.m_operand2 == m_operand2
-                   && comparisonInstr.m_label == m_label;
+            m_rhs = value;
+        }
+
+        bool IsOperation()
+        {
+            return std::holds_alternative< Operation::Ptr >( m_rhs );
+        }
+        Operation::Ptr GetOperation()
+        {
+            if ( !IsOperation() )
+            {
+                throw std::invalid_argument( "Can only be called on operation type." );
+            }
+            return std::get< Operation::Ptr >( m_rhs );
+        }
+
+        /**
+         * \brief  Determines if operand contains empty string or not.
+         *
+         * \param[in]  operand  The operand being checked.
+         *
+         * \return  True if the operand is holding an empty string, false otherwise.
+         */
+        static bool IsOperandEmpty( Operand operand )
+        {
+            if ( std::holds_alternative< std::string >( operand ) )
+            {
+                if ( "" == std::get< std::string >( operand ) )
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         // The target of the operation, i.e. where the result will be stored.
         std::string m_target;
 
-        // Operation type.
-        Opcode m_opcode;
-
-        Operand m_operand1;
-        Operand m_operand2;
+        // The right hand side of the instruction - either a single operand or an operation.
+        RHS m_rhs;
 
         // Optional label assigned to this instruction.
         std::string m_label;

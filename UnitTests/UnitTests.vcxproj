@@ -85,7 +85,6 @@
     <ClCompile Include="SymbolTableTests.cpp" />
     <ClCompile Include="TacGeneratorTests.cpp" />
     <ClCompile Include="TacInstructionFactoryTests.cpp" />
-    <ClCompile Include="ThreeAddrInstructionTests.cpp" />
     <ClCompile Include="TokeniserTests.cpp" />
     <ClCompile Include="TokenTests.cpp" />
     <ClCompile Include="UnitTestsMain.cpp" />

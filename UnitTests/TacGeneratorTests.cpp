@@ -52,19 +52,6 @@ public:
             .in( sequence )
             .with( expectedTarget, opcode, operand );
     }
-    // Wrapper around the mock expect call for AddNoOperandsInstruction()
-    void
-    ExpectAddNoOperandsInstruction(
-        const std::string& expectedTarget,
-        Opcode opcode,
-        mock::sequence sequence
-    )
-    {
-        MOCK_EXPECT( m_instructionFactoryMock->AddNoOperandsInstruction )
-            .once()
-            .in( sequence )
-            .with( expectedTarget, opcode );
-    }
     // Wrapper around the mock expect call for AddAssignmentInstruction()
     void
     ExpectAddAssignmentInstruction(
@@ -153,7 +140,7 @@ public:
         ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, branchOpcode, branchOperand1, branchOperand2, sequence );
         // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
         // Return dummy instruction to verify the later call.
-        ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+        ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
         MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
         uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
@@ -385,7 +372,7 @@ BOOST_AUTO_TEST_CASE( Divide_Identifier )
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, dividendId, quotientId, sequence );
     // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
     // Return dummy instruction to verify the later call.
-    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
     const uint8_t increment{ 1u };
@@ -496,7 +483,7 @@ BOOST_AUTO_TEST_CASE( Modulo_Identifier )
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, Opcode::BRLT, dividendId, quotientId, sequence );
     // Expect a call to retrieve a copy of this instruction pointer, so that the target label may be replaced at the end.
     // Return dummy instruction to verify the later call.
-    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr );
 
     const uint8_t increment{ 1u };
@@ -982,11 +969,11 @@ BOOST_AUTO_TEST_CASE( LogicalOr_TwoIdentifiers )
     CheckNewTempVarCalls( resultId, initialValue, sequence );
 
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, c_zeroOperand, operand1, sequence );
-    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr1 );
 
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, c_zeroOperand, operand2, sequence );
-    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr2 );
 
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };
@@ -1096,11 +1083,11 @@ BOOST_AUTO_TEST_CASE( LogicalAnd_TwoIdentifiers )
     CheckNewTempVarCalls( resultId, initialValue, sequence );
 
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, c_zeroOperand, operand1, sequence );
-    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr1 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr1 );
 
     ExpectAddInstruction( TacInstructionFactory::PLACEHOLDER, expectedBranchOpcode, c_zeroOperand, operand2, sequence );
-    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, 1u, 1u );
+    ThreeAddrInstruction::Ptr dummyInstr2 = std::make_shared< ThreeAddrInstruction >( "target", Opcode::OR, "var1", "var2" );
     MOCK_EXPECT( m_instructionFactoryMock->GetLatestInstruction ).once().in( sequence ).returns( dummyInstr2 );
 
     uint8_t nonBranchValue{ static_cast< bool >( !valueIfBranchTrue ) };

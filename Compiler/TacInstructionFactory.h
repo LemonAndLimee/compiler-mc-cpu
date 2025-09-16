@@ -24,7 +24,6 @@ public:
 
     virtual void AddInstruction( std::string target, Opcode opcode, Operand operand1, Operand operand2 );
     virtual void AddSingleOperandInstruction( std::string target, Opcode opcode, Operand operand );
-    virtual void AddNoOperandsInstruction( std::string target, Opcode opcode );
     virtual void AddAssignmentInstruction( std::string target, Operand operand );
 
     virtual void SetInstructionBranchToNextLabel( ThreeAddrInstruction::Ptr instruction, std::string labelIfNotExists );

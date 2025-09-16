@@ -67,7 +67,9 @@ TacInstructionFactory::SetNextInstructionLabel(
 }
 
 /**
- * \brief  Creates a new instruction and adds it to the stored collection.
+ * \brief  Creates a new instruction and adds it to the stored collection. Replaces any non-zero literals with a new
+ *         temporary variable (zero is considered an invalid address in the target architecture, so loading address 0
+ *         will automatically load value 0).
  *
  * \param[in]  target    String representing the identifier of the target of the operation. This could be the result
  *                       of a calculation, or a target branch label.
@@ -83,7 +85,40 @@ TacInstructionFactory::AddInstruction(
     Operand operand2
 )
 {
-    ThreeAddrInstruction::Ptr instr = std::make_shared< ThreeAddrInstruction >( target, opcode, operand1, operand2, m_nextInstrLabel );
+    std::string op1String;
+    std::string op2String;
+
+    if ( std::holds_alternative< Literal >( operand1 ) )
+    {
+        Literal value = std::get< Literal >( operand1 );
+        // If value is zero, we can leave the string empty, as this will be converted to zero in assembly form.
+        if ( 0u != value )
+        {
+            op1String = GetNewTempVar( "constLiteral" );
+            AddAssignmentInstruction( op1String, value );
+        }
+    }
+    else
+    {
+        op1String = std::get< std::string >( operand1 );
+    }
+
+    if ( std::holds_alternative< Literal >( operand2 ) )
+    {
+        Literal value = std::get< Literal >( operand2 );
+        if ( 0u != value )
+        {
+            op2String = GetNewTempVar( "constLiteral" );
+            AddAssignmentInstruction( op2String, value );
+        }
+    }
+    else
+    {
+        op2String = std::get< std::string >( operand2 );
+    }
+
+    ThreeAddrInstruction::Ptr instr
+        = std::make_shared< ThreeAddrInstruction >( target, opcode, op1String, op2String, m_nextInstrLabel );
     m_instructions.push_back( instr );
 
     if ( "" != m_nextInstrLabel )
@@ -107,25 +142,7 @@ TacInstructionFactory::AddSingleOperandInstruction(
     Operand operand
 )
 {
-    Operand emptyOperand{};
-    AddInstruction( target, opcode, operand, emptyOperand );
-}
-
-/**
- * \brief  Creates a new instruction with no operands and adds it to the stored collection.
- *
- * \param[in]  target   String representing the identifier of the target of the operation. This could be the result
- *                      of a calculation, or a target branch label.
- * \param[in]  opcode   The opcode of the operation, determining what type of instruction it is.
- */
-void
-TacInstructionFactory::AddNoOperandsInstruction(
-    std::string target,
-    Opcode opcode
-)
-{
-    Operand emptyOperand{};
-    AddInstruction( target, opcode, emptyOperand, emptyOperand );
+    AddInstruction( target, opcode, operand, "" );
 }
 
 /**
@@ -141,9 +158,13 @@ TacInstructionFactory::AddAssignmentInstruction(
     Operand operand
 )
 {
-    Opcode emptyOpcode{ UNUSED };
-    Operand emptyOperand{};
-    AddInstruction( target, emptyOpcode, operand, emptyOperand );
+    ThreeAddrInstruction::Ptr instr = std::make_shared< ThreeAddrInstruction >( target, operand, m_nextInstrLabel );
+    m_instructions.push_back( instr );
+
+    if ( "" != m_nextInstrLabel )
+    {
+        m_nextInstrLabel = "";
+    }
 }
 
 /**
@@ -163,10 +184,15 @@ TacInstructionFactory::SetInstructionBranchToNextLabel(
     {
         LOG_ERROR_AND_THROW( "Passed a nullptr instruction.", std::invalid_argument );
     }
-    if ( Opcode::BRE != instruction->m_opcode && Opcode::BRLT != instruction->m_opcode )
+    if ( !instruction->IsOperation() )
+    {
+        LOG_ERROR_AND_THROW( "Method called on assignment instruction", std::invalid_argument );
+    }
+    Operation::Ptr rhsOperation = instruction->GetOperation();
+    if ( Opcode::BRE != rhsOperation->opcode && Opcode::BRLT != rhsOperation->opcode )
     {
         LOG_ERROR_AND_THROW( "This method can only be called on a branch instruction. Opcode: "
-                             + std::to_string( instruction->m_opcode ), std::invalid_argument );
+                             + std::to_string( rhsOperation->opcode ), std::invalid_argument );
     }
 
     if ( "" == m_nextInstrLabel )
