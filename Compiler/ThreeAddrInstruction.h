@@ -134,6 +134,17 @@ namespace TAC
             }
             return false;
         }
+        /**
+         * \brief  Determines if opcode is a branch type.
+         *
+         * \param[in]  opcode  The opcode being checked.
+         *
+         * \return  True if the opcode is a branch type, false otherwise.
+         */
+        static bool IsOpcodeBranch( Opcode opcode )
+        {
+            return Opcode::BRE == opcode || Opcode::BRLT == opcode;
+        }
 
         // The target of the operation, i.e. where the result will be stored.
         std::string m_target;

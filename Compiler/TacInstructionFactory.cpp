@@ -189,7 +189,7 @@ TacInstructionFactory::SetInstructionBranchToNextLabel(
         LOG_ERROR_AND_THROW( "Method called on assignment instruction", std::invalid_argument );
     }
     Operation::Ptr rhsOperation = instruction->GetOperation();
-    if ( Opcode::BRE != rhsOperation->opcode && Opcode::BRLT != rhsOperation->opcode )
+    if ( !ThreeAddrInstruction::IsOpcodeBranch( rhsOperation->opcode ) )
     {
         LOG_ERROR_AND_THROW( "This method can only be called on a branch instruction. Opcode: "
                              + std::to_string( rhsOperation->opcode ), std::invalid_argument );

@@ -79,6 +79,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssemblyGeneratorTests.cpp" />
     <ClCompile Include="AstGeneratorTests.cpp" />
     <ClCompile Include="AstNodeTests.cpp" />
     <ClCompile Include="SymbolTableGeneratorTests.cpp" />

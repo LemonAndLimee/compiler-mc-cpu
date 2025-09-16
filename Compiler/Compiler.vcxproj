@@ -148,6 +148,7 @@
     </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssemblyGenerator.cpp" />
     <ClCompile Include="AstGenerator.cpp" />
     <ClCompile Include="AstNode.cpp" />
     <ClCompile Include="Compiler.cpp" />
@@ -164,6 +165,7 @@
     <ClCompile Include="TokenTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AssemblyGenerator.h" />
     <ClInclude Include="AstGenerator.h" />
     <ClInclude Include="AstNode.h" />
     <ClInclude Include="FileIO.h" />
