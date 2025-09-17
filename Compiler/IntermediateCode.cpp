@@ -154,7 +154,25 @@ IntermediateCode::ConvertAssign(
     Operand operand1 = std::get< 1 >( expressionInfo );
     Operand operand2 = std::get< 2 >( expressionInfo );
 
-    m_instructionFactory->AddInstruction( uniqueLhsId, opcode, operand1, operand2 );
+    // If opcode is invalid, expect there to be a single RHS operand.
+    if ( Opcode::INVALID == opcode )
+    {
+        if ( ThreeAddrInstruction::IsOperandEmpty( operand1 ) )
+        {
+            LOG_ERROR_AND_THROW( "For assignment to '" + uniqueLhsId + "': operand1 must be non-empty",
+                                 std::runtime_error );
+        }
+        if ( !ThreeAddrInstruction::IsOperandEmpty( operand2 ) )
+        {
+            LOG_ERROR_AND_THROW( "For assignment to '" + uniqueLhsId + "': expected operand2 to be empty.",
+                                 std::runtime_error );
+        }
+        m_instructionFactory->AddAssignmentInstruction( uniqueLhsId, operand1 );
+    }
+    else
+    {
+        m_instructionFactory->AddInstruction( uniqueLhsId, opcode, operand1, operand2 );
+    }
 }
 
 /**
