@@ -7,6 +7,7 @@
 #include "Logger.h"
 #include "SymbolTableGenerator.h"
 #include "IntermediateCode.h"
+#include "AssemblyGenerator.h"
 
 /**
  * \brief  Runs compiler steps to produce generated assembly language.
@@ -108,28 +109,23 @@ RunCompiler(
     }
     LOG_INFO_AND_COUT( "Successfully generated intermediate code!" );
 
-    // At this stage we have a list of three-address instructions, with unique identifiers holding values.
-    // We have 2 jobs:
-    // - Allocate registers/memory addresses for all identifiers.
-    // - Evaluate labels to point to the instruction index (taking into account that adding extra loads will
-    //   shift the indexes up each time)
 
-    // To make branching easier, let's say we reserve 1 register for one-time loads of branch targets. This means
-    // the register allocation algorithm can proceed without worrying about slotting in space for branch targeting
-    // later.
-
-    // - First step is to divide the program into basic blocks (blocks between branches/branch labels). A branch
-    //   instruction is considered part of the former of the 2 blocks it borders.
-    // - We also need to work out the live interval of each variable.
-    // - Then on each basic block, perform a linear scan algorithm to allocate registers based on identifier live
-    //   intervals, spilling intervals if we run out of registers.
-    // - When a variable is spilled, it is now stored in memory and must be loaded/stored when it is referenced. If it
-    //   only appears on the RHS, it need not be written back to memory.
-    // - A given instruction will only need max. 3 values, so we should reserve 3 registers for loading spilled values.
-    //   We can use one of these for branch target loading later, as branches also only need max 3 values.
-    // - All data must be in memory at the boundary between basic blocks. At the end of a block, write back any values
-    //   that are live and have been written to (or all live if it is the first block in the program). In a new block,
-    //   if a value is required, load it from memory first.
+    Assembly::AssemblyGenerator::Ptr assemblyGenerator
+        = std::make_shared< Assembly::AssemblyGenerator >( tacInstructions );
+    Assembly::Instructions assemblyInstructions;
+    try
+    {
+        LOG_INFO_AND_COUT( "Converting intermediate code to assembly..." );
+        assemblyGenerator->CalculateBasicBlocks();
+        assemblyGenerator->CalculateLiveIntervals();
+        assemblyInstructions = assemblyGenerator->GenerateAssemblyInstructions();
+    }
+    catch ( std::exception& e )
+    {
+        LOG_ERROR( "Caught exception while generating assembly: " + std::string( e.what() ) );
+        return false;
+    }
+    LOG_INFO_AND_COUT( "Successfully generated assembly instructions!" );
 
 
     LOG_WARN( "No further stages of compilation have been added yet: exiting program." );

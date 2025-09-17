@@ -2,6 +2,8 @@
 
 #include "AssemblyGenerator.h"
 
+using namespace Assembly;
+
 // Derived class of the assembly generator, with extended member access for testing.
 class AssemblyGenerator_Test : public AssemblyGenerator
 {
