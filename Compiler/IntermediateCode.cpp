@@ -297,8 +297,21 @@ IntermediateCode::GetExpressionInfo(
         if ( g_symbolsToOpcodesMap.end() != g_symbolsToOpcodesMap.find( nodeLabel ) )
         {
             opcode = g_symbolsToOpcodesMap.find( nodeLabel )->second;
-            operand1 = lhs;
-            operand2 = rhs;
+
+            // If both operands are literal, resolve the expression at compile time, e.g. a + b
+            if ( std::holds_alternative< Literal >( lhs )
+                 && ( std::holds_alternative< Literal >( rhs ) || ThreeAddrInstruction::IsOperandEmpty( rhs ) )
+               )
+            {
+                operand1 = ApplyOpcodeToLiterals( opcode, std::get< Literal >( lhs ), std::get< Literal >( rhs ) );
+                opcode = INVALID;
+                operand2 = "";
+            }
+            else
+            {
+                operand1 = lhs;
+                operand2 = rhs;
+            }
         }
         // For more complex cases like divide, will need to generate pre-instructions
         else
@@ -391,6 +404,47 @@ IntermediateCode::GetOperandFromExpressionInfo(
     std::string tempVarId = m_instructionFactory->GetNewTempVar();
     m_instructionFactory->AddInstruction( tempVarId, opcode, operand1, operand2 );
     return tempVarId;
+}
+
+/**
+ * \brief  Applies an opcode to two literals to resolve the result at compile time.
+ *
+ * \param[in]  opcode    Opcode to apply.
+ * \param[in]  literal1  The first literal value in the calculation.
+ * \param[in]  literal2  The second literal value in the calculation.
+ *
+ * \return  Result of the calculation.
+ */
+Literal
+IntermediateCode::ApplyOpcodeToLiterals(
+    Opcode opcode,
+    Literal literal1,
+    Literal literal2
+)
+{
+    switch ( opcode )
+    {
+    case Opcode::ADD:
+        return literal1 + literal2;
+    case Opcode::SUB:
+        if ( literal2 > literal1 )
+        {
+            std::string warnMsg = std::to_string( literal1 ) + " - " + std::to_string( literal2 )
+                                  + ": signed values are not supported, data will be lost.";
+            LOG_AND_COUT( WARN, warnMsg );
+        }
+        return literal1 - literal2;
+    case Opcode::AND:
+        return literal1 & literal2;
+    case Opcode::OR:
+        return literal1 | literal2;
+    case Opcode::LS:
+        return literal1 << 1;
+    case Opcode::RS:
+        return literal1 >> 2;
+    default:
+        LOG_ERROR_AND_THROW( "Invalid opcode:" + std::to_string( opcode ), std::invalid_argument );
+    }
 }
 
 /**

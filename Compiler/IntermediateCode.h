@@ -41,6 +41,8 @@ private:
     ExpressionInfo GetExpressionInfo( AstNode::Ptr expressionNode, SymbolTable::Ptr currentSt );
     Operand GetOperandFromExpressionInfo( ExpressionInfo info );
 
+    Literal ApplyOpcodeToLiterals( Opcode opcode, Literal literal1, Literal literal2 );
+
     // Factory class for creating instructions.
     TacInstructionFactory::Ptr m_instructionFactory;
     // Object responsible for converting complex expression operations and creating new instructions.

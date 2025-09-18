@@ -16,7 +16,7 @@ AstSimulator::CreateAssignNodeFromByteValue(
 )
 {
     Token::Ptr valueToken = std::make_shared< Token >( TokenType::BYTE, value );
-    return CreateAssignStatementSubtree( varName, valueToken, isDeclaration );
+    return CreateAssignStatementFromToken( varName, valueToken, isDeclaration );
 }
 
 /**
@@ -31,7 +31,7 @@ AstSimulator::CreateAssignNodeFromVar(
 )
 {
     Token::Ptr valueToken = std::make_shared< Token >( TokenType::IDENTIFIER, valueVar );
-    return CreateAssignStatementSubtree( varName, valueToken, isDeclaration );
+    return CreateAssignStatementFromToken( varName, valueToken, isDeclaration );
 }
 
 /**
@@ -45,15 +45,39 @@ AstSimulator::CreateAssignNodeFromVar(
  * \return  Assignment AST node. Root of the created subtree.
  */
 AstNode::Ptr
-AstSimulator::CreateAssignStatementSubtree(
+AstSimulator::CreateAssignStatementFromToken(
     const std::string& varName,
     Token::Ptr valueToken,
     IsDeclaration isDeclaration
 )
 {
     // LHS
-    AstNode::Ptr lhsNode;
+    AstNode::Ptr lhsNode = GetLhsIdNode( varName, isDeclaration );
 
+    // RHS
+    AstNode::Ptr valueNode = std::make_shared< AstNode >( valueToken->m_type, valueToken );
+
+    // Construct parent node
+    AstNode::Children children{ lhsNode, valueNode };
+    AstNode::Ptr assignNode = std::make_shared< AstNode >( TokenType::ASSIGN, children );
+
+    return assignNode;
+}
+
+/**
+ * \brief  Get AST node for a LHS identifier - holds token or declaration sub-tree.
+ *
+ * \param[in]  lhs            The identifier of the LHS variable being written to.
+ * \param[in]  isDeclaration  Whether the LHS variable is being declared for this first time.
+ *
+ * \return  The created variable node.
+ */
+AstNode::Ptr
+AstSimulator::GetLhsIdNode(
+    const std::string& varName,
+    IsDeclaration isDeclaration
+)
+{
     Token::Ptr idToken = std::make_shared< Token >( TokenType::IDENTIFIER, varName );
     AstNode::Ptr idNode = std::make_shared< AstNode >( TokenType::IDENTIFIER, idToken );
 
@@ -66,21 +90,213 @@ AstSimulator::CreateAssignStatementSubtree(
         AstNode::Children varNodeChildren{ dataTypeNode, idNode };
         AstNode::Ptr variableNode = std::make_shared< AstNode >( NT::Variable, varNodeChildren );
 
-        lhsNode = variableNode;
+        return variableNode;
     }
     else
     {
-        lhsNode = idNode;
+        return idNode;
     }
+}
 
-    // RHS
-    AstNode::Ptr valueNode = std::make_shared< AstNode >( valueToken->m_type, valueToken );
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    uint8_t operand1,
+    uint8_t operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::BYTE, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::BYTE, token1 );
 
-    // Construct parent node
-    AstNode::Children children{ lhsNode, valueNode };
-    AstNode::Ptr assignNode = std::make_shared< AstNode >( TokenType::ASSIGN, children );
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::BYTE, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::BYTE, token2 );
 
-    return assignNode;
+    return CreateTwoOpExpression( operation, node1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    uint8_t operand1,
+    const std::string& operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::BYTE, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::BYTE, token1 );
+
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::IDENTIFIER, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::IDENTIFIER, token2 );
+
+    return CreateTwoOpExpression( operation, node1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    const std::string& operand1,
+    uint8_t operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::IDENTIFIER, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::IDENTIFIER, token1 );
+
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::BYTE, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::BYTE, token2 );
+
+    return CreateTwoOpExpression( operation, node1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    const std::string& operand1,
+    const std::string& operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::IDENTIFIER, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::IDENTIFIER, token1 );
+
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::IDENTIFIER, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::IDENTIFIER, token2 );
+
+    return CreateTwoOpExpression( operation, node1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    uint8_t operand1,
+    AstNode::Ptr operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::BYTE, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::BYTE, token1 );
+
+    return CreateTwoOpExpression( operation, node1, operand2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    AstNode::Ptr operand1,
+    uint8_t operand2
+)
+{
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::BYTE, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::BYTE, token2 );
+
+    return CreateTwoOpExpression( operation, operand1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    AstNode::Ptr operand1,
+    const std::string& operand2
+)
+{
+    Token::Ptr token2 = std::make_shared< Token >( TokenType::IDENTIFIER, operand2 );
+    AstNode::Ptr node2 = std::make_shared< AstNode >( T::IDENTIFIER, token2 );
+
+    return CreateTwoOpExpression( operation, operand1, node2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    const std::string& operand1,
+    AstNode::Ptr operand2
+)
+{
+    Token::Ptr token1 = std::make_shared< Token >( TokenType::IDENTIFIER, operand1 );
+    AstNode::Ptr node1 = std::make_shared< AstNode >( T::IDENTIFIER, token1 );
+
+    return CreateTwoOpExpression( operation, node1, operand2 );
+}
+/**
+ * \brief  Constructs expression node with 2 operands.
+ *
+ * \param[in]  operation  The expression operation type - this will be the node label.
+ * \param[in]  operand1   The LHS operand of the expression.
+ * \param[in]  operand2   The RHS operand of the expression.
+ *
+ * \return  The created expression node.
+ */
+AstNode::Ptr
+AstSimulator::CreateTwoOpExpression(
+    T operation,
+    AstNode::Ptr operand1,
+    AstNode::Ptr operand2
+)
+{
+    AstNode::Children expressionChildren{ operand1, operand2 };
+    AstNode::Ptr expressionNode = std::make_shared< AstNode >( operation, expressionChildren );
+    return expressionNode;
 }
 
 /**
@@ -114,4 +330,27 @@ AstSimulator::WrapNodesInBlocks(
         }
     }
     return createdChild;
+}
+
+/**
+ * \brief  Creates a symbol table with mock entries for the given list of identifiers, and attaches to the given node.
+ *
+ * \param[in]  scopeNode    Node to attach the symbol table to.
+ * \param[in]  identifiers  Collection of identifiers for which to create entries.
+ * \param[in]  parentTable  The parent symbol table for the table being created. Null by default.
+ */
+void
+AstSimulator::CreateAndAttachFakeSymbolTable(
+    AstNode::Ptr scopeNode,
+    std::vector< std::string > identifiers,
+    SymbolTable::Ptr parentTable //= nullptr
+)
+{
+    SymbolTable::Ptr table = std::make_shared< SymbolTable >( parentTable );
+    for ( auto identifier : identifiers )
+    {
+        SymbolTableEntry::Ptr entry = std::make_shared< SymbolTableEntry >();
+        table->AddEntry( identifier, entry );
+    }
+    scopeNode->m_symbolTable = table;
 }
