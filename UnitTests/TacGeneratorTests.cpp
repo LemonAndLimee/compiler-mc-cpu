@@ -1,6 +1,6 @@
 #include <boost/test/unit_test.hpp>
 
-#include "TacGenerator.h"
+#include "TacExpressionGenerator.h"
 #include "TacInstructionFactoryMock.h"
 
 class TacGeneratorTestsFixture

@@ -3,6 +3,8 @@
 #include "SymbolTableGenerator.h"
 #include "AstSimulator.h"
 
+using namespace AstSimulator;
+
 /**
  * \brief  Holds utility code for test cased related to symbol table generation.
  */
@@ -134,8 +136,7 @@ BOOST_AUTO_TEST_CASE( UndeclaredIdentifier )
     // Create assignment statement that reads from undeclared variable.
     std::string varName1 = "foo";
     std::string varName2 = "bar";
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromVar( varName2, isNewVariable, varName1 );
+    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromVar( varName2, varName1, IsDeclaration::TRUE );
 
     BOOST_CHECK_THROW( m_generator->GenerateSymbolTableForAst( assignNode ), std::runtime_error );
 }
@@ -149,9 +150,8 @@ BOOST_AUTO_TEST_CASE( SingleIdentifier_Unreferenced )
 {
     std::string varName = "foo";
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
     // Use single assign statement as the scope
-    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     constexpr size_t expectedNumEntries{ 1u };
     SymbolTable::Ptr table = GenerateTableAndValidate( assignNode, expectedNumEntries );
@@ -171,13 +171,11 @@ BOOST_AUTO_TEST_CASE( Identifier_ReadFrom )
     // Create first declaration statement.
     std::string varName = "foo";
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     // Create second assign statement which reads from the first.
     std::string varName2 = "bar";
-    constexpr bool isNewVariable2{ true };
-    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromVar( varName2, isNewVariable2, varName );
+    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromVar( varName2, varName, IsDeclaration::TRUE );
 
     // Create node to hold both assignment statements.
     AstNode::Children children{ assignNode1, assignNode2 };
@@ -208,13 +206,11 @@ BOOST_AUTO_TEST_CASE( SingleIdentifier_WrittenTo )
     // Create first declaration statement.
     std::string varName = "foo";
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     // Create second assign statement which writes to the first.
     constexpr uint8_t numValue2{ 3u };
-    constexpr bool isNewVariable2{ false };
-    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
+    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue2, IsDeclaration::FALSE );
 
     // Create node to hold both assignment statements.
     AstNode::Children children{ assignNode1, assignNode2 };
@@ -238,18 +234,15 @@ BOOST_AUTO_TEST_CASE( Identifier_ReadFromAndWrittenTo )
     // Create first declaration statement.
     std::string varName1 = "foo";
     constexpr uint8_t numValue1{ 5u };
-    constexpr bool isNewVariable1{ true };
-    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName1, isNewVariable1, numValue1 );
+    AstNode::Ptr assignNode1 = AstSimulator::CreateAssignNodeFromByteValue( varName1, numValue1, IsDeclaration::TRUE );
 
     // Create second assign statement which writes to the first.
     constexpr uint8_t numValue2{ 3u };
-    constexpr bool isNewVariable2{ false };
-    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName1, isNewVariable2, numValue2 );
+    AstNode::Ptr assignNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName1, numValue2, IsDeclaration::FALSE );
 
     // Create third assign statement which reads from the first.
     std::string varName2 = "bar";
-    constexpr bool isNewVariable3{ true };
-    AstNode::Ptr assignNode3 = AstSimulator::CreateAssignNodeFromVar( varName2, isNewVariable3, varName1 );
+    AstNode::Ptr assignNode3 = AstSimulator::CreateAssignNodeFromVar( varName2, varName1, IsDeclaration::TRUE );
 
     // Create node to hold all assignment statements.
     AstNode::Children children{ assignNode1, assignNode2, assignNode3 };
@@ -304,13 +297,11 @@ BOOST_AUTO_TEST_CASE( VarReferencesInNestedScope )
     // Declaration statement for the parent scope
     std::string varName = "foo";
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     // Assign to the var name, this statement goes in the child scope
     constexpr uint8_t numValue2{ 5u };
-    constexpr bool isNewVariable2{ false };
-    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
+    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue2, IsDeclaration::FALSE );
 
     constexpr TokenType scopeDefiningTokenType{ TokenType::IF };
     AstNode::Children childScopeChildren{ assignNode };
@@ -344,12 +335,10 @@ BOOST_AUTO_TEST_CASE( SiblingScopesSameIdentifier )
     // Scope 1:
     // Declare identifier and then write to it.
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     constexpr uint8_t numValue2{ 3u };
-    constexpr bool isNewVariable2{ false };
-    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
+    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue2, IsDeclaration::FALSE );
 
     AstNode::Children scope1Children{ declarationNode, assignNode };
     AstNode::Ptr scope1 = std::make_shared< AstNode >( scopeDefiningTokenType, scope1Children );
@@ -357,8 +346,7 @@ BOOST_AUTO_TEST_CASE( SiblingScopesSameIdentifier )
     // Scope 2:
     // Declare identifier, and do not reference it.
     constexpr uint8_t numValue3{ 1u };
-    constexpr bool isNewVariable3{ true };
-    AstNode::Ptr declarationNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable3, numValue3 );
+    AstNode::Ptr declarationNode2 = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue3, IsDeclaration::TRUE );
 
     AstNode::Children scope2Children{ declarationNode2 };
     AstNode::Ptr scope2 = std::make_shared< AstNode >( scopeDefiningTokenType, scope2Children );
@@ -397,13 +385,11 @@ BOOST_AUTO_TEST_CASE( GrandchildNestedScope )
 
     // In the parent scope: declare identifier
     constexpr uint8_t numValue{ 5u };
-    constexpr bool isNewVariable{ true };
-    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable, numValue );
+    AstNode::Ptr declarationNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue, IsDeclaration::TRUE );
 
     // In the grandchild scope, write to identifier
     constexpr uint8_t numValue2{ 3u };
-    constexpr bool isNewVariable2{ false };
-    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, isNewVariable2, numValue2 );
+    AstNode::Ptr assignNode = AstSimulator::CreateAssignNodeFromByteValue( varName, numValue2, IsDeclaration::FALSE );
 
     // Populate scopes
     AstNode::Children grandchildScopeChildren{ assignNode };
@@ -456,10 +442,9 @@ BOOST_AUTO_TEST_CASE( StartingSymbolBlock_WhileLoop )
     // Create first declaration statement.
     std::string insideScopeVar = "insideScope";
     constexpr uint8_t insideScopeValue{ 5u };
-    constexpr bool insideScope_IsNewVariable{ true };
     AstNode::Ptr insideScopeAssign = AstSimulator::CreateAssignNodeFromByteValue( insideScopeVar,
                                                                                   insideScopeValue,
-                                                                                  insideScope_IsNewVariable );
+                                                                                  IsDeclaration::TRUE );
 
     Token::Ptr conditionByteToken = std::make_shared< Token >( TokenType::BYTE, 1u );
     AstNode::Ptr conditionNode = std::make_shared< AstNode >( TokenType::BYTE, conditionByteToken );
@@ -470,10 +455,9 @@ BOOST_AUTO_TEST_CASE( StartingSymbolBlock_WhileLoop )
     // Create second, outside-scope declaration statement.
     std::string outsideScopeVar = "outsideScope";
     constexpr uint8_t outsideScopeValue{ 10u };
-    constexpr bool outsideScope_IsNewVariable{ true };
     AstNode::Ptr outsideScopeAssign = AstSimulator::CreateAssignNodeFromByteValue( outsideScopeVar,
                                                                                    outsideScopeValue,
-                                                                                   outsideScope_IsNewVariable );
+                                                                                   IsDeclaration::TRUE );
 
     AstNode::Children blockChildren{ whileNode, outsideScopeAssign};
     AstNode::Ptr blockNode = std::make_shared< AstNode >( NT::Block, blockChildren );

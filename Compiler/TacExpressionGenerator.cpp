@@ -2,7 +2,7 @@
  * Contains definition of class responsible for generating three-address code for complex operations.
  */
 
-#include "TacGenerator.h"
+#include "TacExpressionGenerator.h"
 
 TacExpressionGenerator::TacExpressionGenerator( TacInstructionFactory::Ptr instrFactory )
 : m_instructionFactory( instrFactory )

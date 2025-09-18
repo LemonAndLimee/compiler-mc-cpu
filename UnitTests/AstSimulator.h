@@ -8,7 +8,14 @@
 
 namespace AstSimulator
 {
-    AstNode::Ptr CreateAssignNodeFromByteValue( const std::string& varName, bool isNewVar, uint8_t value );
-    AstNode::Ptr CreateAssignNodeFromVar( const std::string& varName, bool isNewVar, const std::string& valueVar );
-    AstNode::Ptr CreateAssignStatementSubtree( const std::string& varName, bool isNewVar, Token::Ptr valueToken );
+    enum IsDeclaration
+    {
+        TRUE = true,
+        FALSE = false
+    };
+    AstNode::Ptr CreateAssignNodeFromByteValue( const std::string& varName, uint8_t value, IsDeclaration isDeclaration );
+    AstNode::Ptr CreateAssignNodeFromVar( const std::string& varName, const std::string& valueVar, IsDeclaration isDeclaration );
+    AstNode::Ptr CreateAssignStatementSubtree( const std::string& varName, Token::Ptr valueToken, IsDeclaration isDeclaration );
+
+    AstNode::Ptr WrapNodesInBlocks( AstNode::Children nodes );
 }

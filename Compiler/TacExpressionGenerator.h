@@ -4,37 +4,33 @@
 
 #pragma once
 
-#include "ThreeAddrInstruction.h"
-#include "AstNode.h"
-#include "TacInstructionFactory.h"
-
-using namespace TAC;
+#include "ITacExpressionGenerator.h"
 
 /**
  * \brief  Class responsible for translating more complicated operations into sets of three-address code instructions.
  *         E.g. tackles unsupported opcodes such as multiply/divide, as well as handling branching.
  */
-class TacExpressionGenerator
+class TacExpressionGenerator : public ITacExpressionGenerator
 {
 public:
     using Ptr = std::shared_ptr< TacExpressionGenerator >;
 
     TacExpressionGenerator( TacInstructionFactory::Ptr instrFactory );
 
-    Operand Multiply( Operand op1, Operand op2 );
-    Operand Divide( Operand op1, Operand op2 );
-    Operand Modulo( Operand op1, Operand op2 );
+    virtual Operand Multiply( Operand op1, Operand op2 ) override;
+    virtual Operand Divide( Operand op1, Operand op2 ) override;
+    virtual Operand Modulo( Operand op1, Operand op2 ) override;
 
-    Operand Equals( Operand op1, Operand op2 );
-    Operand NotEquals( Operand op1, Operand op2 );
-    Operand Leq( Operand op1, Operand op2 );
-    Operand Geq( Operand op1, Operand op2 );
-    Operand LessThan( Operand op1, Operand op2 );
-    Operand GreaterThan( Operand op1, Operand op2 );
+    virtual Operand Equals( Operand op1, Operand op2 ) override;
+    virtual Operand NotEquals( Operand op1, Operand op2 ) override;
+    virtual Operand Leq( Operand op1, Operand op2 ) override;
+    virtual Operand Geq( Operand op1, Operand op2 ) override;
+    virtual Operand LessThan( Operand op1, Operand op2 ) override;
+    virtual Operand GreaterThan( Operand op1, Operand op2 ) override;
 
-    Operand LogicalNot( Operand op1 );
-    Operand LogicalOr( Operand op1, Operand op2 );
-    Operand LogicalAnd( Operand op1, Operand op2 );
+    virtual Operand LogicalNot( Operand op1 ) override;
+    virtual Operand LogicalOr( Operand op1, Operand op2 ) override;
+    virtual Operand LogicalAnd( Operand op1, Operand op2 ) override;
 
 private:
     Operand AddComparisonInstructions( const std::string& resultName,

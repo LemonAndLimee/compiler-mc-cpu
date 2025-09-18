@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "TacGenerator.h"
+#include "TacExpressionGenerator.h"
 
 #include <tuple>
 
@@ -19,8 +19,9 @@ class IntermediateCode
 {
 public:
     using UPtr = std::unique_ptr< IntermediateCode >;
+    using Ptr = std::shared_ptr< IntermediateCode >;
 
-    IntermediateCode( TacInstructionFactory::Ptr instrFactory, TacExpressionGenerator::Ptr tacExprGenerator );
+    IntermediateCode( TacInstructionFactory::Ptr instrFactory, ITacExpressionGenerator::Ptr tacExprGenerator );
 
     void GenerateIntermediateCode( AstNode::Ptr astNode );
 
@@ -43,5 +44,5 @@ private:
     // Factory class for creating instructions.
     TacInstructionFactory::Ptr m_instructionFactory;
     // Object responsible for converting complex expression operations and creating new instructions.
-    TacExpressionGenerator::Ptr m_tacExpressionGenerator;
+    ITacExpressionGenerator::Ptr m_tacExpressionGenerator;
 };

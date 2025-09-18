@@ -6,7 +6,7 @@
 
 IntermediateCode::IntermediateCode(
     TacInstructionFactory::Ptr instrFactory,
-    TacExpressionGenerator::Ptr tacExprGenerator
+    ITacExpressionGenerator::Ptr tacExprGenerator
 )
 : m_instructionFactory( instrFactory ),
   m_tacExpressionGenerator( tacExprGenerator )
@@ -23,6 +23,10 @@ IntermediateCode::GenerateIntermediateCode(
     AstNode::Ptr astNode
 )
 {
+    if ( nullptr == astNode )
+    {
+        LOG_ERROR_AND_THROW( "Cannot generate intermediate code from a nullptr AST.", std::invalid_argument );
+    }
     if ( nullptr == astNode->m_symbolTable )
     {
         LOG_ERROR_AND_THROW( "Can't generate intermediate code for an AST that doesn't have a symbol table.",
@@ -451,11 +455,19 @@ IntermediateCode::ConvertIfElse(
                                  std::invalid_argument );
         }
 
+        // Add unconditional jump to after the else block, in the case that the main if condition was true.
+        m_instructionFactory->AddInstruction(
+            TacInstructionFactory::PLACEHOLDER, Opcode::BRE, conditionOperand, conditionOperand
+        );
+        ThreeAddrInstruction::Ptr branchToEnd = m_instructionFactory->GetLatestInstruction();
+
         AstNode::Children elseChildren = elseNode->GetChildren();
         for ( auto child : elseChildren )
         {
             ConvertAstToInstructions( child, ifSymbolTable );
         }
+
+        m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd, "skipElse" );
     }
 }
 

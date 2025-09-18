@@ -158,7 +158,7 @@
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="SymbolTable.cpp" />
     <ClCompile Include="SymbolTableGenerator.cpp" />
-    <ClCompile Include="TacGenerator.cpp" />
+    <ClCompile Include="TacExpressionGenerator.cpp" />
     <ClCompile Include="TacInstructionFactory.cpp" />
     <ClCompile Include="Token.cpp" />
     <ClCompile Include="Tokeniser.cpp" />
@@ -171,11 +171,12 @@
     <ClInclude Include="FileIO.h" />
     <ClInclude Include="Grammar.h" />
     <ClInclude Include="IntermediateCode.h" />
+    <ClInclude Include="ITacExpressionGenerator.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="SymbolTable.h" />
     <ClInclude Include="SymbolTableEntry.h" />
     <ClInclude Include="SymbolTableGenerator.h" />
-    <ClInclude Include="TacGenerator.h" />
+    <ClInclude Include="TacExpressionGenerator.h" />
     <ClInclude Include="TacInstructionFactory.h" />
     <ClInclude Include="ThreeAddrInstruction.h" />
     <ClInclude Include="Token.h" />

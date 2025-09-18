@@ -83,6 +83,7 @@
     <ClCompile Include="AstGeneratorTests.cpp" />
     <ClCompile Include="AstNodeTests.cpp" />
     <ClCompile Include="AstSimulator.cpp" />
+    <ClCompile Include="IntermediateCodeTests.cpp" />
     <ClCompile Include="SymbolTableGeneratorTests.cpp" />
     <ClCompile Include="SymbolTableTests.cpp" />
     <ClCompile Include="TacGeneratorTests.cpp" />
@@ -93,6 +94,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AstSimulator.h" />
+    <ClInclude Include="TacExpressionGeneratorMock.h" />
     <ClInclude Include="TacInstructionFactoryMock.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -51,7 +51,7 @@
     <ClCompile Include="IntermediateCode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TacGenerator.cpp">
+    <ClCompile Include="TacExpressionGenerator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TacInstructionFactory.cpp">
@@ -104,13 +104,16 @@
     <ClInclude Include="IntermediateCode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TacGenerator.h">
+    <ClInclude Include="TacExpressionGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="TacInstructionFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AssemblyGenerator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ITacExpressionGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

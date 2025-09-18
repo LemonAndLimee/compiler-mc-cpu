@@ -48,12 +48,18 @@
     <ClCompile Include="AstSimulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="IntermediateCodeTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TacInstructionFactoryMock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AstSimulator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TacExpressionGeneratorMock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
