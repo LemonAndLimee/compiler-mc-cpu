@@ -480,6 +480,20 @@ IntermediateCode::ConvertIfElse(
         LOG_ERROR_AND_THROW( "'If' AST node has no symbol table.", std::invalid_argument );
     }
 
+    bool hasElseBlock{ false };
+    if ( 3u == children.size() )
+    {
+        AstNode::Ptr elseNode = children[2];
+        if ( T::ELSE != elseNode->m_nodeLabel )
+        {
+            LOG_ERROR_AND_THROW( "AST node has wrong label. Expected ELSE, got: "
+                                 + GrammarSymbols::ConvertSymbolToString( elseNode->m_nodeLabel ),
+                                 std::invalid_argument );
+        }
+        hasElseBlock = true;
+    }
+
+
     // Get the condition
     AstNode::Ptr conditionNode = children[0];
     ExpressionInfo conditionExpressionInfo = GetExpressionInfo( conditionNode, ifSymbolTable );
@@ -494,26 +508,20 @@ IntermediateCode::ConvertIfElse(
     AstNode::Ptr ifBlockNode = children[1];
     ConvertAstToInstructions( ifBlockNode, ifSymbolTable );
 
-    // Set the else label to be the next instruction - this will either point to the soon-to-be-added else block, or
-    // the next instruction that gets added.
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToElse, "else" );
 
     // If there is an else, add that block and attach the else label
-    if ( 3u == children.size() )
+    if ( hasElseBlock )
     {
         AstNode::Ptr elseNode = children[2];
-        if ( T::ELSE != elseNode->m_nodeLabel )
-        {
-            LOG_ERROR_AND_THROW( "AST node has wrong label. Expected ELSE, got: "
-                                 + GrammarSymbols::ConvertSymbolToString( astNode->m_nodeLabel ),
-                                 std::invalid_argument );
-        }
 
         // Add unconditional jump to after the else block, in the case that the main if condition was true.
         m_instructionFactory->AddInstruction(
             TacInstructionFactory::PLACEHOLDER, Opcode::BRE, conditionOperand, conditionOperand
         );
         ThreeAddrInstruction::Ptr branchToEnd = m_instructionFactory->GetLatestInstruction();
+
+        // Set the else label to be the next instruction - this will point to the soon-to-be-added else block.
+        m_instructionFactory->SetInstructionBranchToNextLabel( branchToElse, "else" );
 
         AstNode::Children elseChildren = elseNode->GetChildren();
         for ( auto child : elseChildren )
@@ -522,6 +530,11 @@ IntermediateCode::ConvertIfElse(
         }
 
         m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd, "skipElse" );
+    }
+    else
+    {
+        // Set the end label to be the next instruction - this will point to the next instruction that gets added.
+        m_instructionFactory->SetInstructionBranchToNextLabel( branchToElse, "skipIf" );
     }
 }
 

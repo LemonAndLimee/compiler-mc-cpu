@@ -31,6 +31,8 @@ public:
     virtual ThreeAddrInstruction::Ptr GetLatestInstruction();
     virtual Instructions GetInstructions();
 
+    // There is no chance of this accidentally being used by a real value, as all vars/labels have numbers in their
+    // UUIDs.
     static inline const std::string PLACEHOLDER = "PLACEHOLDER";
 
 protected:

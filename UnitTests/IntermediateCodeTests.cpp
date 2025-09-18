@@ -18,6 +18,11 @@ public:
         m_codeGenerator = std::make_shared< IntermediateCode >( m_instrFactoryMock, m_exprGeneratorMock );
     }
 
+    ThreeAddrInstruction::Ptr MakeDummyUniqueTacInstr()
+    {
+        return std::make_shared< ThreeAddrInstruction >( "target", Opcode::INVALID, "op1", "op2" );
+    }
+
     IntermediateCode::Ptr m_codeGenerator;
 
     TacExpressionGeneratorMock::Ptr m_exprGeneratorMock;
@@ -135,8 +140,8 @@ BOOST_AUTO_TEST_CASE( AssignsSingleLiteral )
 
     m_codeGenerator->GenerateIntermediateCode( blockNode );
 
-    BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( rhsOperand ) );
-    TAC::Literal rhsValue = std::get< TAC::Literal >( rhsOperand );
+    BOOST_REQUIRE( std::holds_alternative< Literal >( rhsOperand ) );
+    Literal rhsValue = std::get< Literal >( rhsOperand );
     BOOST_CHECK_EQUAL( literalValue, rhsValue );
 }
 
@@ -194,8 +199,8 @@ BOOST_AUTO_TEST_CASE( AssignsExpression_MapsToTacOpcode )
                 BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
                 // Can't check the operand contents because a new unique id is calculated.
 
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand2 ) );
-                BOOST_CHECK_EQUAL( rhsOperand2, std::get< TAC::Literal >( operand2 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( rhsOperand2, std::get< Literal >( operand2 ) );
             }
         );
 
@@ -228,8 +233,8 @@ BOOST_AUTO_TEST_CASE( AssignsExpression_MapsToTacOpcode_TwoLiterals )
         .calls(
             [&]( std::string, TAC::Operand rhs )
             {
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( rhs ) );
-                BOOST_CHECK_EQUAL( expectedRhs, std::get< TAC::Literal >( rhs ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( rhs ) );
+                BOOST_CHECK_EQUAL( expectedRhs, std::get< Literal >( rhs ) );
             }
         );
 
@@ -268,8 +273,8 @@ BOOST_AUTO_TEST_CASE( AssignsExpression_DoesNotMapToTacOpcode )
                 BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
                 // Can't check the operand contents because a new unique id is calculated.
 
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand2 ) );
-                BOOST_CHECK_EQUAL( rhsOperand2, std::get< TAC::Literal >( operand2 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( rhsOperand2, std::get< Literal >( operand2 ) );
 
                 return expressionOperandToReturn;
             }
@@ -340,8 +345,8 @@ BOOST_AUTO_TEST_CASE( AssignsNestedExpression)
             {
                 BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
                 // Can't check the operand contents because a new unique id is calculated.
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand2 ) );
-                BOOST_CHECK_EQUAL( decrement, std::get< TAC::Literal >( operand2 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( decrement, std::get< Literal >( operand2 ) );
             }
         );
 
@@ -354,10 +359,10 @@ BOOST_AUTO_TEST_CASE( AssignsNestedExpression)
         .calls(
             [&]( Operand operand1, Operand operand2 )
             {
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand1 ) );
-                BOOST_CHECK_EQUAL( dividend, std::get< TAC::Literal >( operand1 ) );
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand2 ) );
-                BOOST_CHECK_EQUAL( quotient, std::get< TAC::Literal >( operand2 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand1 ) );
+                BOOST_CHECK_EQUAL( dividend, std::get< Literal >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( quotient, std::get< Literal >( operand2 ) );
 
                 return divideOperandToReturn;
             }
@@ -389,8 +394,8 @@ BOOST_AUTO_TEST_CASE( AssignsNestedExpression)
             [&]( std::string, Opcode, Operand operand1, Operand operand2 )
             {
                 BOOST_CHECK( gtOperandToReturn == operand1 );
-                BOOST_REQUIRE( std::holds_alternative< TAC::Literal >( operand2 ) );
-                BOOST_CHECK_EQUAL( rhsOperand2, std::get< TAC::Literal >( operand2 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( rhsOperand2, std::get< Literal >( operand2 ) );
             }
         );
 
@@ -401,13 +406,292 @@ BOOST_AUTO_TEST_SUITE_END() // Assign
 
 BOOST_AUTO_TEST_SUITE( IfElse )
 
-// - If/else:
-//   - Wrong num children
-//   - Has no symbol table
-//   - If single operand condition
-//   - If expression condition
-//   - 3rd child not else label
-//   - If with valid else block
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with an if node with the
+ * wrong number of children.
+ */
+BOOST_AUTO_TEST_CASE( WrongNumChildren )
+{
+    constexpr uint8_t byteValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE, std::make_shared< Token >( T::BYTE, byteValue ) );
+
+    AstNode::Children oneChild{ conditionNode };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, oneChild );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with an if node with no symbol table.
+ */
+BOOST_AUTO_TEST_CASE( NoSymbolTable )
+{
+    constexpr uint8_t byteValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE, std::make_shared< Token >( T::BYTE, byteValue ) );
+
+    const std::string dummyVarName{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVarName, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children ifChildren{ conditionNode, dummyAssign };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, ifChildren );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    // Give the outer block node a symbol table, but not the if node.
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will correctly add the expected instructions if given an if
+ * node with a single operand condition, and no else section.
+ */
+BOOST_AUTO_TEST_CASE( SingleOperandCondition )
+{
+    constexpr uint8_t conditionValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE,
+                                                              std::make_shared< Token >( T::BYTE, conditionValue ) );
+
+    const std::string dummyVarName{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVarName, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children ifChildren{ conditionNode, dummyAssign };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, ifChildren );
+    CreateAndAttachFakeSymbolTable( ifNode, { dummyVarName } );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+    mock::sequence s;
+
+    // Expect a branch instruction to the end, if condition == 0.
+    // The label is not yet known at this time so expect a placeholder.
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand1 ) );
+                BOOST_CHECK_EQUAL( conditionValue, std::get< Literal >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( 0u, std::get< Literal >( operand2 ) );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToElseInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToElseInstr );
+
+    // Expect the assign statement to be added - this is already tested so we're not interested in 100% validation.
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s );
+
+    // Expect a call to set the branch target to the current end point
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToElseInstr, mock::any );
+
+    m_codeGenerator->GenerateIntermediateCode( blockNode );
+}
+
+/**
+ * Tests that the method for converting an AST will correctly add the expected instructions if given an if
+ * node with an expression condition, and no else section.
+ */
+BOOST_AUTO_TEST_CASE( ExpressionCondition )
+{
+    // Make expression: a <= b
+    const std::string varA{ "a" };
+    const std::string varB{ "b" };
+    const T conditionNodeLabel{ T::LEQ };
+    AstNode::Ptr conditionNode = CreateTwoOpExpression( conditionNodeLabel, varA, varB );
+
+    const std::string dummyVarName{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVarName, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children ifChildren{ conditionNode, dummyAssign };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, ifChildren );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, { varA, varB } );
+
+    CreateAndAttachFakeSymbolTable( ifNode, { dummyVarName }, blockNode->m_symbolTable );
+
+    mock::sequence s;
+
+    // Expect call to get condition operand
+    const Operand conditionOperandToReturn{ "condition" };
+    MOCK_EXPECT( m_exprGeneratorMock->Leq )
+        .once()
+        .in( s )
+        .calls(
+            [&]( Operand operand1, Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< std::string >( operand2 ) );
+                return conditionOperandToReturn;
+            }
+        );
+
+    // Expect a branch instruction to the end, if condition == 0.
+    // The label is not yet known at this time so expect a placeholder.
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                BOOST_CHECK( conditionOperandToReturn == operand1 );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( 0u, std::get< Literal >( operand2 ) );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToElseInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToElseInstr );
+
+    // Expect the assign statement to be added - this is already tested so we're not interested in 100% validation.
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s );
+
+    // Expect a call to set the branch target to the current end point
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToElseInstr, mock::any );
+
+    m_codeGenerator->GenerateIntermediateCode( blockNode );
+}
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an if node with three children, and the
+ * third child is not an else node.
+ */
+BOOST_AUTO_TEST_CASE( ThirdChildNotElse )
+{
+    constexpr uint8_t conditionValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE,
+                                                              std::make_shared< Token >( T::BYTE, conditionValue ) );
+
+    const std::string dummyVarName{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVarName, 5u, IsDeclaration::TRUE );
+
+    AstNode::Ptr thirdChild = CreateAssignNodeFromByteValue( dummyVarName, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children ifChildren{ conditionNode, dummyAssign, thirdChild };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, ifChildren );
+    CreateAndAttachFakeSymbolTable( ifNode, { dummyVarName } );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will successfully convert an if sub-tree with a valid else block.
+ */
+BOOST_AUTO_TEST_CASE( ValidElse )
+{
+    constexpr uint8_t conditionValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE,
+                                                              std::make_shared< Token >( T::BYTE, conditionValue ) );
+
+    const std::string dummyIfVarName{ "dummyIfVar" };
+    AstNode::Ptr dummyIfAssign = CreateAssignNodeFromByteValue( dummyIfVarName, 5u, IsDeclaration::TRUE );
+
+    const std::string dummyElseVarName{ "dummyElseVar" };
+    AstNode::Ptr dummyElseAssign = CreateAssignNodeFromByteValue( dummyElseVarName, 5u, IsDeclaration::TRUE );
+    AstNode::Children elseChildren{ dummyElseAssign };
+    AstNode::Ptr elseNode = std::make_shared< AstNode >( T::ELSE, elseChildren );
+
+    AstNode::Children ifChildren{ conditionNode, dummyIfAssign, elseNode };
+    AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, ifChildren );
+    CreateAndAttachFakeSymbolTable( ifNode, { dummyIfVarName, dummyElseVarName } );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+    mock::sequence s;
+
+    // Expect a branch instruction to the end, if condition == 0.
+    // The label is not yet known at this time so expect a placeholder.
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand1 ) );
+                BOOST_CHECK_EQUAL( conditionValue, std::get< Literal >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( 0u, std::get< Literal >( operand2 ) );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToElseInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToElseInstr );
+
+    // Expect the assign statement to be added - this is already tested so we're not interested in 100% validation.
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s );
+
+    // Expect an unconditional branch to the end, skipping past the else block
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                // The contents of the operands don't matter, only that they are equal.
+                BOOST_CHECK( operand1 == operand2 );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToEndInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToEndInstr );
+
+    // The ELSE section:
+
+    // Expect a call to set the branch target to the current else point
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToElseInstr, mock::any );
+
+    // Expect the else assign statement to be added - this is already tested so we're not interested in 100% validation.
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s );
+
+    // Expect a call to set the branch target to the current end point
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToEndInstr, mock::any );
+
+    m_codeGenerator->GenerateIntermediateCode( blockNode );
+}
 
 BOOST_AUTO_TEST_SUITE_END() // IfElse
 
