@@ -111,11 +111,13 @@ BOOST_AUTO_TEST_CASE( WrongNumChildren )
     AstNode::Children oneChild{ varNode };
     AstNode::Ptr invalidAssignNode_OneChild = std::make_shared< AstNode >( T::ASSIGN, oneChild );
     AstNode::Ptr blockNode = WrapNodesInBlocks( { invalidAssignNode_OneChild } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
     BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
 
     AstNode::Children tooManyChildren{ varNode, invalidAssignNode_OneChild, blockNode };
     AstNode::Ptr invalidAssignNode_ThreeChildren = std::make_shared< AstNode >( T::ASSIGN, tooManyChildren );
     AstNode::Ptr blockNode_TooManyChildren = WrapNodesInBlocks( { invalidAssignNode_ThreeChildren } );
+    CreateAndAttachFakeSymbolTable( blockNode_TooManyChildren, {} );
     BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode_TooManyChildren ), std::invalid_argument );
 }
 
@@ -417,7 +419,9 @@ BOOST_AUTO_TEST_CASE( WrongNumChildren )
 
     AstNode::Children oneChild{ conditionNode };
     AstNode::Ptr ifNode = std::make_shared< AstNode >( T::IF, oneChild );
+    CreateAndAttachFakeSymbolTable( ifNode, {} );
     AstNode::Ptr blockNode = WrapNodesInBlocks( { ifNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
     BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
 }
 
@@ -697,28 +701,361 @@ BOOST_AUTO_TEST_SUITE_END() // IfElse
 
 BOOST_AUTO_TEST_SUITE( For )
 
-// - For loop:
-//   - Wrong num children
-//   - Init has wrong num children
-//   - No symbol table
-//   - Simple case (single op condition)
-//   - Complex case (expression assignment, comparison condition)
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with a for node with the
+ * wrong number of children.
+ */
+BOOST_AUTO_TEST_CASE( WrongNumChildren )
+{
+    constexpr uint8_t byteValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE, std::make_shared< Token >( T::BYTE, byteValue ) );
+
+    AstNode::Children oneChild{ conditionNode };
+    AstNode::Ptr forNode = std::make_shared< AstNode >( T::FOR, oneChild );
+    CreateAndAttachFakeSymbolTable( forNode, {} );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { forNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with a for node with an initialiser
+ * node with the wrong number of children.
+ */
+BOOST_AUTO_TEST_CASE( ForInit_WrongNumChildren )
+{
+    const std::string initVar{ "initVar" };
+    AstNode::Ptr initAssign = CreateAssignNodeFromByteValue( initVar, 0u, IsDeclaration::TRUE );
+    AstNode::Children initChildren{ initAssign }; // Missing the other 2 parts of the init
+    AstNode::Ptr initNode = std::make_shared< AstNode >( NT::For_init, initChildren );
+
+    const std::string dummyVar{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVar, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children forChildren{ initNode, dummyAssign };
+    AstNode::Ptr forNode = std::make_shared< AstNode >( T::FOR, forChildren );
+    CreateAndAttachFakeSymbolTable( forNode, { initVar, dummyVar } );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { forNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with a for node that has no
+ * symbol table.
+ */
+BOOST_AUTO_TEST_CASE( NoSymbolTable )
+{
+    const std::string initVar{ "initVar" };
+    AstNode::Ptr initAssign = CreateAssignNodeFromByteValue( initVar, 0u, IsDeclaration::TRUE );
+    constexpr uint8_t conditionValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE,
+                                                              std::make_shared< Token >( T::BYTE, conditionValue ) );
+    constexpr uint8_t increment{ 1u };
+    AstNode::Ptr initIncrement = CreateTwoOperandStatement( initVar, IsDeclaration::FALSE, T::PLUS, initVar, increment );
+    AstNode::Children initChildren{ initAssign, conditionNode, initIncrement };
+    AstNode::Ptr initNode = std::make_shared< AstNode >( NT::For_init, initChildren );
+
+    const std::string dummyVar{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVar, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children forChildren{ initNode, dummyAssign };
+    AstNode::Ptr forNode = std::make_shared< AstNode >( T::FOR, forChildren );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { forNode } );
+    // Give the block node a symbol table, but not the for node.
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will successfully convert a valid for loop sub-tree.
+ */
+BOOST_AUTO_TEST_CASE( For_Success )
+{
+    const std::string initVar{ "initVar" };
+    constexpr uint8_t initValue{ 0u };
+    AstNode::Ptr initAssign = CreateAssignNodeFromByteValue( initVar, initValue, IsDeclaration::TRUE );
+    constexpr uint8_t conditionValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE,
+                                                              std::make_shared< Token >( T::BYTE, conditionValue ) );
+    constexpr uint8_t increment{ 1u };
+    AstNode::Ptr incrementNode = CreateTwoOperandStatement( initVar, IsDeclaration::FALSE, T::PLUS, initVar, increment );
+    AstNode::Children initChildren{ initAssign, conditionNode, incrementNode };
+    AstNode::Ptr initNode = std::make_shared< AstNode >( NT::For_init, initChildren );
+
+    const std::string dummyVar{ "dummyVar" };
+    constexpr uint8_t dummyValue{ 5u };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVar, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children forChildren{ initNode, dummyAssign };
+    AstNode::Ptr forNode = std::make_shared< AstNode >( T::FOR, forChildren );
+    CreateAndAttachFakeSymbolTable( forNode, { initVar, dummyVar } );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { forNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+
+    mock::sequence s;
+
+    // Expect the init assign statement to be added
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s )
+        .calls(
+            [&]( std::string, Operand operand )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand ) );
+                BOOST_CHECK_EQUAL( initValue, std::get< Literal >( operand ) );
+            }
+    );
+
+    // Expect conditional branch - if condition == 0, branch to end.
+    // Expect it to have a label so it can be jumped to after one loop is done.
+    const std::string conditionLabelToReturn{ "conditionLabel" };
+    MOCK_EXPECT( m_instrFactoryMock->GetNewLabel )
+        .once()
+        .in( s )
+        .returns( conditionLabelToReturn );
+    MOCK_EXPECT( m_instrFactoryMock->SetNextInstructionLabel )
+        .once()
+        .in( s )
+        .with( conditionLabelToReturn );
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand1 ) );
+                BOOST_CHECK_EQUAL( conditionValue, std::get< Literal >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( 0u, std::get< Literal >( operand2 ) );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToEndInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToEndInstr );
+
+    // Expect the for block contents to be added, i.e. the dummy assign
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s )
+        .calls(
+            [&]( std::string, Operand operand )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand ) );
+                BOOST_CHECK_EQUAL( dummyValue, std::get< Literal >( operand ) );
+            }
+        );
+
+    // Expect statement 2 from the init to be added.
+    const Opcode expectedTacOpcode{ Opcode::ADD };
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .with( mock::any, expectedTacOpcode, mock::any, mock::any )
+        .calls(
+            [&]( std::string, TAC::Opcode, TAC::Operand operand1, TAC::Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
+                // Can't check the operand contents because a new unique id is calculated.
+
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( increment, std::get< Literal >( operand2 ) );
+            }
+    );
+
+    // Expect an unconditional jump to the condition label
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( conditionLabelToReturn, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                // The contents of the operands don't matter, only that they are equal.
+                BOOST_CHECK( operand1 == operand2 );
+            }
+        );
+
+    // Expect the end target label to be set after all the instructions have been added.
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToEndInstr, mock::any );
+
+
+    m_codeGenerator->GenerateIntermediateCode( blockNode );
+}
 
 BOOST_AUTO_TEST_SUITE_END() // For
 
 BOOST_AUTO_TEST_SUITE( While )
 
-// - While loop:
-//   - Wrong num children
-//   - No symbol table
-//   - Single op condition
-//   - Expression condition
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with a while node with the
+ * wrong number of children.
+ */
+BOOST_AUTO_TEST_CASE( WrongNumChildren )
+{
+    constexpr uint8_t byteValue{ 1u };
+    AstNode::Ptr conditionNode = std::make_shared< AstNode >( T::BYTE, std::make_shared< Token >( T::BYTE, byteValue ) );
+
+    AstNode::Children oneChild{ conditionNode };
+    AstNode::Ptr whileNode = std::make_shared< AstNode >( T::WHILE, oneChild );
+    CreateAndAttachFakeSymbolTable( whileNode, {} );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { whileNode } );
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with a while node that has no
+ * symbol table.
+ */
+BOOST_AUTO_TEST_CASE( NoSymbolTable )
+{
+    // Make expression: a <= b
+    const std::string varA{ "a" };
+    const std::string varB{ "b" };
+    const T conditionNodeLabel{ T::LEQ };
+    AstNode::Ptr conditionNode = CreateTwoOpExpression( conditionNodeLabel, varA, varB );
+
+    const std::string dummyVar{ "dummyVar" };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVar, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children whileChildren{ conditionNode, dummyAssign };
+    AstNode::Ptr whileNode = std::make_shared< AstNode >( T::WHILE, whileChildren );
+
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { whileNode } );
+    // Give the block node a symbol table, but not the for node.
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( blockNode ), std::invalid_argument );
+}
+
+/**
+ * Tests that the method for converting an AST will successfully convert a while loop sub-tree.
+ */
+BOOST_AUTO_TEST_CASE( While_Success )
+{
+    // Make expression: a <= b
+    const std::string varA{ "a" };
+    const std::string varB{ "b" };
+    const T conditionNodeLabel{ T::LEQ };
+    AstNode::Ptr conditionNode = CreateTwoOpExpression( conditionNodeLabel, varA, varB );
+
+    const std::string dummyVar{ "dummyVar" };
+    constexpr uint8_t dummyValue{ 5u };
+    AstNode::Ptr dummyAssign = CreateAssignNodeFromByteValue( dummyVar, 5u, IsDeclaration::TRUE );
+
+    AstNode::Children whileChildren{ conditionNode, dummyAssign };
+    AstNode::Ptr whileNode = std::make_shared< AstNode >( T::WHILE, whileChildren );
+    CreateAndAttachFakeSymbolTable( whileNode, { varA, varB, dummyVar } );
+    AstNode::Ptr blockNode = WrapNodesInBlocks( { whileNode } );
+    // Give the block node a symbol table, but not the for node.
+    CreateAndAttachFakeSymbolTable( blockNode, {} );
+
+    mock::sequence s;
+
+    // Expect conditional branch - if condition == 0, branch to end.
+    // Expect it to have a label so it can be jumped to after one loop is done.
+    const std::string conditionLabelToReturn{ "conditionLabel" };
+    MOCK_EXPECT( m_instrFactoryMock->GetNewLabel )
+        .once()
+        .in( s )
+        .returns( conditionLabelToReturn );
+    MOCK_EXPECT( m_instrFactoryMock->SetNextInstructionLabel )
+        .once()
+        .in( s )
+        .with( conditionLabelToReturn );
+    // Expect the condition operand to be fetched
+    const Operand conditionOperandToReturn{ "conditionOperand" };
+    MOCK_EXPECT( m_exprGeneratorMock->Leq )
+        .once()
+        .in( s )
+        .calls(
+            [&]( Operand operand1, Operand operand2 )
+            {
+                BOOST_REQUIRE( std::holds_alternative< std::string >( operand1 ) );
+                BOOST_REQUIRE( std::holds_alternative< std::string >( operand2 ) );
+
+                return conditionOperandToReturn;
+            }
+        );
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( TacInstructionFactory::PLACEHOLDER, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                BOOST_CHECK( conditionOperandToReturn == operand1 );
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand2 ) );
+                BOOST_CHECK_EQUAL( 0u, std::get< Literal >( operand2 ) );
+            }
+        );
+    // Expect a get request for this instruction so it can go back later and assign the target label - return mock.
+    ThreeAddrInstruction::Ptr branchToEndInstr = MakeDummyUniqueTacInstr();
+    MOCK_EXPECT( m_instrFactoryMock->GetLatestInstruction )
+        .once()
+        .in( s )
+        .returns( branchToEndInstr );
+
+    // Expect the for block contents to be added, i.e. the dummy assign
+    MOCK_EXPECT( m_instrFactoryMock->AddAssignmentInstruction )
+        .once()
+        .in( s )
+        .calls(
+            [&]( std::string, Operand operand )
+            {
+                BOOST_REQUIRE( std::holds_alternative< Literal >( operand ) );
+                BOOST_CHECK_EQUAL( dummyValue, std::get< Literal >( operand ) );
+            }
+        );
+
+    // Expect an unconditional jump to the condition label
+    MOCK_EXPECT( m_instrFactoryMock->AddInstruction )
+        .once()
+        .in( s )
+        .with( conditionLabelToReturn, Opcode::BRE, mock::any, mock::any )
+        .calls(
+            [&]( std::string, Opcode, Operand operand1, Operand operand2 )
+            {
+                // The contents of the operands don't matter, only that they are equal.
+                BOOST_CHECK( operand1 == operand2 );
+            }
+        );
+
+    // Expect the end target label to be set after all the instructions have been added.
+    MOCK_EXPECT( m_instrFactoryMock->SetInstructionBranchToNextLabel )
+        .once()
+        .in( s )
+        .with( branchToEndInstr, mock::any );
+
+    m_codeGenerator->GenerateIntermediateCode( blockNode );
+}
 
 BOOST_AUTO_TEST_SUITE_END() // While
 
 BOOST_AUTO_TEST_SUITE_END() // TerminalSymbolTests
 
 BOOST_AUTO_TEST_SUITE( NonTerminalSymbolTests )
+
+/**
+ * Tests that the method for converting an AST will throw an error if given an AST with an invalid non-terminal symbol,
+ * i.e., it is not a 'Block'.
+ */
+BOOST_AUTO_TEST_CASE( InvalidNodeSymbol )
+{
+    AstNode::Children fakeChildren{ nullptr };
+    constexpr NT invalidNodeLabel{ NT::Negation }; // Not block
+    AstNode::Ptr invalidNode = std::make_shared< AstNode >( invalidNodeLabel, fakeChildren );
+    CreateAndAttachFakeSymbolTable( invalidNode, {} );
+    BOOST_CHECK_THROW( m_codeGenerator->GenerateIntermediateCode( invalidNode ), std::invalid_argument );
+}
 
 // Non-Terminal:
 // - Invalid node symbol (not Block)

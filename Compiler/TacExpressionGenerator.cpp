@@ -231,7 +231,7 @@ TacExpressionGenerator::AddDivModInstructions(
     // Unconditional branch
     m_instructionFactory->AddInstruction( mainLoopLabel, Opcode::BRE, result, result );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "divModEnd" );
 
     if ( DivMod::DIV == returnType )
     {
@@ -591,7 +591,7 @@ TacExpressionGenerator::AddComparisonInstructions(
     const uint8_t skippableValue{ !branchTrueBool };
     m_instructionFactory->AddAssignmentInstruction( result, skippableValue );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEndInstr, "comparisonEnd" );
 
     return result;
 }
@@ -678,8 +678,8 @@ TacExpressionGenerator::LogicalOr(
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "end" );
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "orEnd" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "orEnd" );
 
     return result;
 }
@@ -765,8 +765,8 @@ TacExpressionGenerator::LogicalAnd(
 
     m_instructionFactory->AddAssignmentInstruction( result, valueIfBranchFalse );
 
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "end" );
-    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "end" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd1, "andEnd" );
+    m_instructionFactory->SetInstructionBranchToNextLabel( branchToEnd2, "andEnd" );
 
     return result;
 }
